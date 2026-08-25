@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizações Parceiras - M'Boi Mirim</title>
+    <meta name="description" content="Mapa colaborativo das organizações parceiras da região do M'Boi Mirim, Zona Sul de São Paulo.">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<div id="app-container">
+
+    <!-- ============================ NAVBAR ============================ -->
+    <nav class="navbar">
+        <div class="brand-container">
+            <div class="brand-logo"><i class="fa-solid fa-handshake-angle"></i></div>
+            <div class="brand-title">
+                <h1 id="appTitle">Organizações Parceiras - M'Boi Mirim</h1>
+                <span id="appSubtitle">Carregando…</span>
+            </div>
+        </div>
+
+        <div class="nav-controls">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="Buscar organização…" autocomplete="off">
+                <button class="search-clear" id="searchClear" title="Limpar busca" hidden>
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <a class="btn-header btn-ajuda" id="btnInstrucoes" href="#" title="Como incluir uma organização" hidden>
+                <i class="fa-solid fa-circle-question"></i> <span class="btn-label">Como incluir</span>
+            </a>
+
+            <button class="btn-header" id="btnRefresh" title="Recarregar dados da planilha">
+                <i class="fa-solid fa-rotate"></i> <span class="btn-label">Atualizar</span>
+            </button>
+
+            <a class="btn-header" id="btnPlanilha" href="#" target="_blank" rel="noopener" title="Abrir a planilha" hidden>
+                <i class="fa-solid fa-table"></i> <span class="btn-label">Planilha</span>
+            </a>
+
+            <button class="btn-header btn-primary" id="btnExport" title="Exportar em .xlsx">
+                <i class="fa-solid fa-file-excel"></i> <span class="btn-label">Exportar</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ========================== CONTEÚDO ============================ -->
+    <div class="main-content">
+
+        <div id="map"></div>
+
+        <!-- ---------------------- PAINEL LATERAL ---------------------- -->
+        <aside class="sidebar" id="sidebar">
+            <button class="sidebar-toggle-btn" id="btnToggleSidebar" title="Recolher/expandir painel">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+
+            <div class="sidebar-header">
+                <h2><i class="fa-solid fa-sliders"></i> Camadas e Filtros</h2>
+                <span class="count-pill" id="countPill">0</span>
+            </div>
+
+            <div class="sidebar-body">
+
+                <!-- Mapa base -->
+                <div class="filter-group">
+                    <label class="group-title"><span>Mapa Base</span></label>
+                    <div class="basemap-grid" id="basemapContainer"></div>
+                </div>
+
+                <!-- Filtro: Categoria -->
+                <div class="filter-group" id="grupoCategoria" hidden>
+                    <label class="group-title">
+                        <span>Categoria</span>
+                        <span class="group-actions">
+                            <button data-todos="marcar" data-grupo="categoria">Todas</button>
+                            <button data-todos="desmarcar" data-grupo="categoria">Nenhuma</button>
+                        </span>
+                    </label>
+                    <div class="filtro-lista" id="filtroCategoriaLista"></div>
+                </div>
+
+                <!-- Filtro: Subprefeitura -->
+                <div class="filter-group" id="grupoSubpref" hidden>
+                    <label class="group-title">
+                        <span>Subprefeitura</span>
+                        <span class="group-actions">
+                            <button data-todos="marcar" data-grupo="subpref">Todas</button>
+                            <button data-todos="desmarcar" data-grupo="subpref">Nenhuma</button>
+                        </span>
+                    </label>
+                    <div class="filtro-lista" id="filtroSubprefLista"></div>
+                </div>
+
+                <!-- Lista de organizações -->
+                <div class="filter-group group-flex">
+                    <label class="group-title">
+                        <span>Organizações</span>
+                        <span class="status-count" id="listCount">0</span>
+                    </label>
+                    <div class="org-list" id="orgList"></div>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- ------------------------- LEGENDA -------------------------- -->
+        <div class="legenda-box" id="legendaBox" hidden>
+            <div class="legenda-header">
+                <h3><i class="fa-solid fa-list"></i> Categorias</h3>
+                <button id="legendaToggle" title="Recolher/expandir legenda">
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+            </div>
+            <div class="legenda-lista" id="legendaLista"></div>
+        </div>
+
+        <!-- Aviso de geocodificação pendente -->
+        <div class="update-info-badge" id="pendingBadge" hidden>
+            <i class="fa-solid fa-location-crosshairs"></i>
+            <div class="update-content">
+                <div class="update-date">Geocodificação</div>
+                <div class="update-desc" id="pendingText"></div>
+            </div>
+        </div>
+
+        <!-- Overlay de carregamento -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-box">
+                <div class="spinner"></div>
+                <p id="loadingText">Lendo a planilha e georreferenciando endereços…</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="toast" id="toast"><i class="fa-solid fa-circle-info"></i> <span id="toastMsg"></span></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script src="./config.js"></script>
+<script src="./app.js"></script>
+
+</body>
+</html>

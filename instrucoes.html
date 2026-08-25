@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Como incluir uma organização — M'Boi Mirim</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap');
+
+:root {
+    --teal: #007C83;
+    --teal-dark: #0d2b2d;
+    --amarelo: #f0a500;
+    --vermelho: #d64545;
+    --verde: #2e9e5b;
+    --texto: #1f2937;
+    --texto-suave: #5b6b7c;
+    --linha: #dde5e9;
+    --fundo: #f4f7f8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--fundo);
+    color: var(--texto);
+    font-size: 17px;
+    line-height: 1.65;
+}
+
+/* ---------- Cabeçalho ---------- */
+.topo {
+    background: var(--teal-dark);
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+
+.topo h1 { font-family: 'Outfit', sans-serif; font-size: 1.05rem; font-weight: 700; }
+
+.voltar {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+    text-decoration: none;
+    padding: 9px 16px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.voltar:hover { background: rgba(255,255,255,0.22); }
+
+/* ---------- Estrutura ---------- */
+.pagina { max-width: 780px; margin: 0 auto; padding: 32px 20px 80px; }
+
+.intro {
+    background: #fff;
+    border-left: 5px solid var(--teal);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 36px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.intro h2 { font-family: 'Outfit', sans-serif; font-size: 1.4rem; margin-bottom: 10px; color: var(--teal-dark); }
+.intro p { color: var(--texto-suave); }
+
+/* ---------- Passos ---------- */
+.passo {
+    background: #fff;
+    border-radius: 12px;
+    padding: 26px 26px 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    border: 1px solid var(--linha);
+}
+
+.passo-titulo {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.numero {
+    width: 44px;
+    height: 44px;
+    background: var(--teal);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.passo-titulo h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    color: var(--teal-dark);
+    padding-top: 7px;
+}
+
+.passo p { margin-bottom: 12px; }
+.passo p:last-child { margin-bottom: 0; }
+
+.passo ul, .passo ol { margin: 12px 0 12px 24px; }
+.passo li { margin-bottom: 8px; }
+
+/* ---------- Ilustrações ---------- */
+.figura {
+    margin: 18px 0;
+    border: 1px solid var(--linha);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.figura svg { display: block; width: 100%; height: auto; }
+
+.figura figcaption {
+    background: #eef3f5;
+    padding: 9px 14px;
+    font-size: 0.83rem;
+    color: var(--texto-suave);
+    border-top: 1px solid var(--linha);
+}
+
+/* ---------- Caixas de aviso ---------- */
+.aviso {
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin: 18px 0;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    font-size: 0.95rem;
+}
+
+.aviso i { font-size: 1.2rem; margin-top: 2px; flex-shrink: 0; }
+.aviso strong { display: block; margin-bottom: 4px; }
+
+.aviso.atencao { background: #fff8e6; border: 1px solid #f5d98b; color: #6b4e00; }
+.aviso.atencao i { color: var(--amarelo); }
+
+.aviso.erro { background: #fdeeee; border: 1px solid #f0bcbc; color: #7d2020; }
+.aviso.erro i { color: var(--vermelho); }
+
+.aviso.ok { background: #edf9f1; border: 1px solid #a8ddbd; color: #1c5c34; }
+.aviso.ok i { color: var(--verde); }
+
+/* ---------- Diversos ---------- */
+.exemplo {
+    background: #f0f4f6;
+    border: 1px dashed #b9cbd2;
+    border-radius: 8px;
+    padding: 12px 15px;
+    font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+    font-size: 0.88rem;
+    color: var(--teal-dark);
+    margin: 12px 0;
+    word-break: break-word;
+}
+
+.certo { color: var(--verde); font-weight: 700; }
+.errado { color: var(--vermelho); font-weight: 700; }
+
+kbd {
+    background: #fff;
+    border: 1px solid #b9c6cc;
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.botao-planilha {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--teal);
+    color: #fff;
+    text-decoration: none;
+    padding: 14px 26px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 8px 0;
+}
+
+.botao-planilha:hover { background: #00646a; }
+
+.opcional {
+    background: #f8fafb;
+    border: 2px dashed var(--linha);
+}
+
+.opcional .numero { background: var(--texto-suave); }
+
+.rodape {
+    text-align: center;
+    color: var(--texto-suave);
+    font-size: 0.88rem;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--linha);
+}
+
+@media (max-width: 600px) {
+    body { font-size: 16px; }
+    .pagina { padding: 20px 14px 60px; }
+    .passo { padding: 20px 18px; }
+    .topo h1 { font-size: 0.92rem; }
+    .voltar span { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="topo">
+    <h1>Como incluir uma organização</h1>
+    <a class="voltar" href="./index.html"><i class="fa-solid fa-arrow-left"></i> <span>Voltar ao mapa</span></a>
+</div>
+
+<div class="pagina">
+
+    <div class="intro">
+        <h2>Antes de começar</h2>
+        <p>Você vai preencher uma linha de uma planilha. Não precisa saber nada de computador além de digitar e copiar. Leva uns 3 minutos. Depois que você preencher, a organização aparece no mapa sozinha — <strong>você não precisa avisar ninguém</strong>.</p>
+    </div>
+
+    <!-- PASSO 1 -->
+    <div class="passo">
+        <div class="passo-titulo">
+            <div class="numero">1</div>
+            <h3>Abra a planilha</h3>
+        </div>
+        <p>Clique no botão abaixo. A planilha vai abrir numa aba nova do navegador.</p>
+        <a class="botao-planilha" id="linkPlanilha" href="#" target="_blank" rel="noopener">
+            <i class="fa-solid fa-table"></i> Abrir a planilha
+        </a>
+        <div class="aviso atencao">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>
+                <strong>Se aparecer "Você precisa de acesso"</strong>
+                Peça para a pessoa responsável liberar seu e-mail. Sem isso você consegue ver, mas não consegue escrever.
+            </div>
+        </div>
+    </div>
+
+    <!-- PASSO 2 -->
+    <div class="passo">
+        <div class="passo-titulo">
+            <div class="numero">2</div>
+            <h3>Encontre a primeira linha vazia</h3>
+        </div>
+        <p>Desça a planilha com a rolagem do mouse até achar a primeira linha totalmente em branco. É nela que você vai escrever.</p>
+
+        <figure class="figura">
+            <svg viewBox="0 0 700 240" xmlns="http://www.w3.org/2000/svg">
+                <rect width="700" height="240" fill="#ffffff"/>
+                <!-- cabeçalho de colunas -->
+                <rect x="0" y="0" width="700" height="26" fill="#e8eef0"/>
+                <rect x="0" y="0" width="40" height="240" fill="#e8eef0"/>
+                <g font-family="Inter, sans-serif" font-size="11" fill="#5b6b7c" text-anchor="middle">
+                    <text x="20" y="18">#</text>
+                    <text x="140" y="18">A</text><text x="290" y="18">B</text>
+                    <text x="420" y="18">C</text><text x="520" y="18">D</text><text x="620" y="18">E</text>
+                </g>
+                <!-- linha de títulos -->
+                <rect x="40" y="26" width="660" height="30" fill="#0d2b2d"/>
+                <g font-family="Inter, sans-serif" font-size="11" fill="#ffffff" font-weight="600">
+                    <text x="52" y="46">Nome da Organização</text>
+                    <text x="222" y="46">Serviços oferecidos</text>
+                    <text x="372" y="46">Endereço</text>
+                    <text x="482" y="46">Latitude</text>
+                    <text x="582" y="46">Categoria</text>
+                </g>
+                <!-- linhas preenchidas -->
+                <g font-family="Inter, sans-serif" font-size="11" fill="#1f2937">
+                    <rect x="40" y="56" width="660" height="28" fill="#ffffff"/>
+                    <text x="52" y="74">CEU Feitiço da Vila</text><text x="222" y="74">Escola, biblioteca</text>
+                    <text x="372" y="74">R. Feitiço da...</text><text x="482" y="74">-23,685918</text><text x="582" y="74">Educação</text>
+                    <rect x="40" y="84" width="660" height="28" fill="#f7fafb"/>
+                    <text x="52" y="102">CEU Guarapiranga</text><text x="222" y="102">Escola, piscina</text>
+                    <text x="372" y="102">Estr. da Baronesa...</text><text x="482" y="102">-23,697602</text><text x="582" y="102">Educação</text>
+                    <rect x="40" y="112" width="660" height="28" fill="#ffffff"/>
+                    <text x="52" y="130">UBS Jardim Ângela</text><text x="222" y="130">Atendimento médico</text>
+                    <text x="372" y="130">Rua Antônio...</text><text x="482" y="130">-23,701200</text><text x="582" y="130">Saúde</text>
+                </g>
+                <g font-family="Inter, sans-serif" font-size="11" fill="#5b6b7c" text-anchor="middle">
+                    <text x="20" y="74">2</text><text x="20" y="102">3</text><text x="20" y="130">4</text>
+                    <text x="20" y="164">5</text><text x="20" y="196">6</text>
+                </g>
+                <!-- linha vazia destacada -->
+                <rect x="40" y="142" width="660" height="34" fill="#fff8e6" stroke="#f0a500" stroke-width="2.5"/>
+                <rect x="40" y="176" width="660" height="28" fill="#ffffff"/>
+                <rect x="40" y="204" width="660" height="28" fill="#f7fafb"/>
+                <!-- seta -->
+                <path d="M 250 200 L 250 176" stroke="#f0a500" stroke-width="3" fill="none" marker-end="url(#seta)"/>
+                <defs>
+                    <marker id="seta" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto">
+                        <path d="M 0 0 L 9 4.5 L 0 9 z" fill="#f0a500"/>
+                    </marker>
+                </defs>
+                <text x="262" y="222" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#b37700">Escreva aqui: primeira linha vazia</text>
+            </svg>
+            <figcaption>A planilha salva sozinha. Não existe botão "salvar".</figcaption>
+        </figure>
+    </div>
+
+    <!-- PASSO 3 -->
+    <div class="passo">
+        <div class="passo-titulo">
+            <div class="numero">3</div>
+            <h3>Escreva o nome e os serviços</h3>
+        </div>
+        <p>Na coluna <strong>Nome da Organização</strong>, escreva o nome completo, do jeito que a organização é conhecida.</p>
+        <p>Na coluna <strong>Serviços oferecidos</strong>, escreva o que ela faz, separando por vírgula.</p>
+        <div class="exemplo">Curso de informática, distribuição de cesta básica, apoio jurídico</div>
+        <p>Para pular de uma coluna para a outra, aperte <kbd>Tab</kbd> ou clique na próxima caixinha.</p>
+    </div>
+
+    <!-- PASSO 4 -->
+    <div class="passo">
+        <div class="passo-titulo">
+            <div class="numero">4</div>
+            <h3>Pegue o endereço no Google Maps</h3>
+        </div>
+        <p>Este é o passo mais importante. <strong>Não digite o endereço de cabeça.</strong> Copie do Google Maps, porque é assim que o mapa consegue achar o lugar certo.</p>
+
+        <ol>
+            <li>Abra o <strong>Google Maps</strong> (google.com/maps) em outra aba</li>
+            <li>Digite o nome ou o endereço da organização na busca</li>
+            <li>Clique no lugar certo quando ele aparecer</li>
+            <li>Vai abrir uma caixa do lado esquerdo com o endereço completo</li>
+            <li>Passe o mouse em cima do endereço e clique no ícone de <strong>copiar</strong></li>
+        </ol>
+
+        <figure class="figura">
+            <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg">
+                <rect width="700" height="300" fill="#e8eef0"/>
+                <!-- painel lateral do maps -->
+                <rect x="16" y="16" width="300" height="268" rx="10" fill="#ffffff" stroke="#cdd8dd"/>
+                <rect x="16" y="16" width="300" height="72" rx="10" fill="#0d2b2d"/>
+                <rect x="16" y="60" width="300" height="28" fill="#0d2b2d"/>
+                <text x="34" y="52" font-family="Outfit, sans-serif" font-size="16" font-weight="700" fill="#ffffff">Associação Vida Nova</text>
+                <text x="34" y="76" font-family="Inter, sans-serif" font-size="11" fill="#b9ccd0">Organização sem fins lucrativos</text>
+
+                <!-- linha do endereço destacada -->
+                <rect x="28" y="104" width="276" height="60" rx="8" fill="#fff8e6" stroke="#f0a500" stroke-width="2.5"/>
+                <circle cx="46" cy="122" r="7" fill="#007C83"/>
+                <path d="M 43 122 l 2.5 2.5 l 4.5 -5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+                <text x="62" y="120" font-family="Inter, sans-serif" font-size="11" fill="#1f2937">R. Feitiço da Vila, 399 - Chacara</text>
+                <text x="62" y="134" font-family="Inter, sans-serif" font-size="11" fill="#1f2937">Santa Maria, São Paulo - SP,</text>
+                <text x="62" y="148" font-family="Inter, sans-serif" font-size="11" fill="#1f2937" font-weight="700">05879-000</text>
+                <!-- ícone copiar -->
+                <rect x="272" y="112" width="24" height="24" rx="5" fill="#007C83"/>
+                <rect x="278" y="118" width="9" height="11" rx="1.5" fill="none" stroke="#fff" stroke-width="1.5"/>
+                <rect x="281" y="121" width="9" height="11" rx="1.5" fill="#007C83" stroke="#fff" stroke-width="1.5"/>
+                <text x="196" y="182" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#b37700" text-anchor="middle">Clique aqui para copiar tudo</text>
+
+                <!-- outras linhas -->
+                <g font-family="Inter, sans-serif" font-size="11" fill="#5b6b7c">
+                    <circle cx="46" cy="206" r="6" fill="#cdd8dd"/><text x="62" y="210">(11) 5555-1234</text>
+                    <circle cx="46" cy="236" r="6" fill="#cdd8dd"/><text x="62" y="240">Aberto · Fecha às 18:00</text>
+                </g>
+
+                <!-- mapa ao lado -->
+                <rect x="332" y="16" width="352" height="268" rx="10" fill="#d9e6dc"/>
+                <path d="M 332 120 Q 450 90 560 140 T 684 130" stroke="#ffffff" stroke-width="7" fill="none"/>
+                <path d="M 400 16 L 430 284" stroke="#ffffff" stroke-width="5" fill="none"/>
+                <path d="M 332 220 Q 480 200 684 236" stroke="#ffffff" stroke-width="5" fill="none"/>
+                <circle cx="505" cy="150" r="13" fill="#d64545" stroke="#fff" stroke-width="3"/>
+                <text x="508" y="270" font-family="Inter, sans-serif" font-size="11" fill="#5b7a63" text-anchor="middle">Google Maps</text>
+            </svg>
+            <figcaption>O endereço completo já vem com bairro, cidade, estado e CEP.</figcaption>
+        </figure>
+
+        <div class="aviso atencao">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>
+                <strong>Copie o endereço INTEIRO, inclusive o CEP</strong>
+                O CEP é o número no fim, com um tracinho no meio (exemplo: 05879-000). É ele que garante que o ponto não vá parar em outro bairro.
+            </div>
+        </div>
+
+        <p><span class="certo">CERTO</span> — endereço completo, copiado do Google Maps:</p>
+        <div class="exemplo">R. Feitiço da Vila, 399 - Chacara Santa Maria, São Paulo - SP, 05879-000</div>
+
+        <p><span class="errado">ERRADO</span> — falta número, bairro, cidade e CEP:</p>
+        <div class="exemplo">Rua Feitiço da Vila</div>
+
+        <div class="aviso erro">
+            <i class="fa-solid fa-circle-xmark"></i>
+            <div>
+                <strong>Não escreva coisas como "perto do mercado" ou "ao lado da igreja"</strong>
+                O computador não entende referências. Ele precisa do endereço formal, com número e CEP.
+            </div>
+        </div>
+    </div>
+
+    <!-- PASSO 5 -->
+    <div class="passo">
+        <div class="passo-titulo">
+            <div class="numero">5</div>
+            <h3>Escolha a Categoria e a Subprefeitura</h3>
+        </div>
+        <p>Essas duas colunas não se digita: <strong>se escolhe de uma lista</strong>. Clique na caixinha e uma setinha aparece do lado direito. Clique na setinha e escolha uma opção.</p>
+
+        <figure class="figura">
+            <svg viewBox="0 0 700 230" xmlns="http://www.w3.org/2000/svg">
+                <rect width="700" height="230" fill="#ffffff"/>
+                <!-- célula com dropdown -->
+                <rect x="180" y="24" width="200" height="32" fill="#ffffff" stroke="#007C83" stroke-width="2.5"/>
+                <text x="192" y="45" font-family="Inter, sans-serif" font-size="12" fill="#9aa8b2">Escolha…</text>
+                <rect x="348" y="26" width="30" height="28" fill="#007C83"/>
+                <path d="M 356 37 l 7 8 l 7 -8" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <text x="392" y="45" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#007C83">← clique na setinha</text>
+
+                <!-- lista aberta -->
+                <rect x="180" y="60" width="200" height="150" rx="6" fill="#ffffff" stroke="#cdd8dd" stroke-width="1.5"/>
+                <g font-family="Inter, sans-serif" font-size="12" fill="#1f2937">
+                    <rect x="181" y="61" width="198" height="28" fill="#eef6f7"/><text x="196" y="80">Saúde</text>
+                    <text x="196" y="108">Educação</text>
+                    <text x="196" y="136">Assistência Social</text>
+                    <text x="196" y="164">Cultura</text>
+                    <text x="196" y="192">Esporte e Lazer</text>
+                </g>
+                <text x="400" y="130" font-family="Inter, sans-serif" font-size="12" fill="#5b6b7c">Clique na opção que</text>
+                <text x="400" y="150" font-family="Inter, sans-serif" font-size="12" fill="#5b6b7c">combina com a organização</text>
+            </svg>
+            <figcaption>A cor e o desenho do ponto no mapa vêm da Categoria escolhida.</figcaption>
+        </figure>
+
+        <div class="aviso erro">
+            <i class="fa-solid fa-circle-xmark"></i>
+            <div>
+                <strong>Não digite por cima</strong>
+                Se você digitar uma palavra que não está na lista, a planilha vai recusar. Use sempre a setinha.
+            </div>
+        </div>
+    </div>
+
+    <!-- PASSO 6 -->
+    <div class="passo">
+        <div class="passo-titulo">
+            <div class="numero">6</div>
+            <h3>Preencha o contato e pronto</h3>
+        </div>
+        <p>Escreva o telefone, o e-mail ou o que a organização usar para receber contato.</p>
+        <div class="aviso ok">
+            <i class="fa-solid fa-circle-check"></i>
+            <div>
+                <strong>Terminou!</strong>
+                Não existe botão de salvar — a planilha guarda tudo sozinha. Volte ao mapa e clique em <strong>Atualizar</strong>, no alto da tela. Em alguns segundos a organização aparece.
+            </div>
+        </div>
+        <p>Se ela não aparecer de primeira, espere um minuto e clique em <strong>Atualizar</strong> de novo. O computador demora um pouquinho para descobrir onde fica o endereço.</p>
+    </div>
+
+    <!-- PASSO 7 - OPCIONAL -->
+    <div class="passo opcional">
+        <div class="passo-titulo">
+            <div class="numero"><i class="fa-solid fa-star" style="font-size:1rem"></i></div>
+            <h3>Opcional: quando o ponto cai no lugar errado</h3>
+        </div>
+        <p>Às vezes o computador erra e coloca o ponto na rua errada. Quando isso acontecer, você pode dizer o lugar exato usando as colunas <strong>Latitude</strong> e <strong>Longitude</strong>.</p>
+
+        <p><strong>Como pegar esses números:</strong></p>
+        <ol>
+            <li>Abra o Google Maps</li>
+            <li>Ache o lugar exato da organização no mapa</li>
+            <li><strong>Clique com o botão DIREITO</strong> do mouse bem em cima do telhado do prédio</li>
+            <li>Vai abrir um menuzinho. O primeiro item são dois números</li>
+            <li>Clique nesses números — eles são copiados automaticamente</li>
+        </ol>
+
+        <figure class="figura">
+            <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+                <rect width="700" height="260" fill="#d9e6dc"/>
+                <path d="M 0 90 Q 200 60 400 110 T 700 100" stroke="#ffffff" stroke-width="8" fill="none"/>
+                <path d="M 150 0 L 190 260" stroke="#ffffff" stroke-width="6" fill="none"/>
+                <rect x="220" y="140" width="90" height="60" fill="#c5d4c8"/>
+                <rect x="330" y="150" width="70" height="50" fill="#c5d4c8"/>
+
+                <!-- cursor -->
+                <path d="M 268 158 l 0 26 l 6 -7 l 4 9 l 5 -2 l -4 -9 l 9 0 z" fill="#1f2937" stroke="#ffffff" stroke-width="1.5"/>
+
+                <!-- menu de contexto -->
+                <rect x="292" y="176" width="238" height="66" rx="7" fill="#ffffff" stroke="#b9c6cc" stroke-width="1.5"/>
+                <rect x="293" y="177" width="236" height="30" fill="#fff8e6"/>
+                <text x="308" y="197" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#1f2937">-23,685918, -46,792683</text>
+                <text x="308" y="226" font-family="Inter, sans-serif" font-size="12" fill="#5b6b7c">Direções para cá</text>
+                <path d="M 512 186 l 0 12 M 506 192 l 12 0" stroke="#f0a500" stroke-width="0" />
+
+                <text x="292" y="264" font-family="Inter, sans-serif" font-size="11" fill="#5b7a63"></text>
+                <!-- balão indicativo -->
+                <rect x="36" y="24" width="230" height="54" rx="8" fill="#0d2b2d"/>
+                <text x="52" y="46" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#ffffff">Botão DIREITO do mouse</text>
+                <text x="52" y="64" font-family="Inter, sans-serif" font-size="11" fill="#b9ccd0">em cima do prédio da organização</text>
+                <path d="M 200 82 L 262 152" stroke="#0d2b2d" stroke-width="2.5" fill="none" stroke-dasharray="5,4"/>
+            </svg>
+            <figcaption>O primeiro número é a Latitude. O segundo é a Longitude.</figcaption>
+        </figure>
+
+        <p>Depois, na planilha:</p>
+        <ul>
+            <li>O <strong>primeiro</strong> número (começa com <strong>-23</strong>) vai na coluna <strong>Latitude</strong></li>
+            <li>O <strong>segundo</strong> número (começa com <strong>-46</strong>) vai na coluna <strong>Longitude</strong></li>
+        </ul>
+
+        <div class="aviso atencao">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>
+                <strong>Não esqueça o sinal de menos</strong>
+                Os dois números começam com o traço "−". Sem ele, o ponto vai parar do outro lado do mundo.
+            </div>
+        </div>
+
+        <div class="aviso ok">
+            <i class="fa-solid fa-circle-check"></i>
+            <div>
+                <strong>Pode deixar em branco</strong>
+                Se o ponto já apareceu no lugar certo, não precisa mexer nessas duas colunas.
+            </div>
+        </div>
+    </div>
+
+    <div class="rodape">
+        Em caso de dúvida, procure a pessoa responsável pelo mapa antes de apagar qualquer coisa da planilha.<br>
+        <a href="./index.html" style="color:var(--teal); font-weight:600;">← Voltar ao mapa</a>
+    </div>
+
+</div>
+
+<script src="./config.js"></script>
+<script>
+    // Aponta o botão para a planilha configurada em config.js
+    (function () {
+        var link = document.getElementById('linkPlanilha');
+        if (typeof CONFIG !== 'undefined' && CONFIG.planilhaUrl) {
+            link.href = CONFIG.planilhaUrl;
+        } else {
+            link.style.display = 'none';
+        }
+    })();
+</script>
+
+</body>
+</html>
