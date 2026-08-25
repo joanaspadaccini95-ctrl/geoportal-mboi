@@ -43,8 +43,8 @@ const CONFIG = {
        CATEGORIAS — cor e ícone de cada uma
        ===================================================================== */
     categorias: {
-        "Programas Sociais": { cor: "#ffe5a0", icone: "fa-solid fa-hand-holding-heart" },
-        "Equipamento Público": { cor: "#ffc8aa", icone: "fa-solid fa-landmark"}
+        "Programas Sociais": { cor: "#c5a54d", icone: "fa-solid fa-hand-holding-heart" },
+        "Equipamento Público": { cor: "#ca8b69", icone: "fa-solid fa-landmark"}
     },
 
     // Cores sorteadas automaticamente para categorias ainda não configuradas acima
