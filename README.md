@@ -8,20 +8,21 @@ Mapa público das organizações parceiras da região do M'Boi Mirim (Zona Sul d
 
 ```
 .
-├── index.html          Estrutura da página do mapa
-├── instrucoes.html     Passo a passo para quem vai preencher a planilha
-├── style.css           Design system (glassmorphism / teal)
-├── config.js           ⚙️ ÚNICO arquivo que você precisa editar no dia a dia
-├── app.js              Lógica do mapa, busca, lista e exportação
-├── incluir.html        Formulário de inclusão com alfinete arrastável
-├── incluir.js          Lógica do formulário
+├── index.html          Mapa
+├── incluir.html        Formulário (cadastro e edição)
+├── incluir.js
+├── instrucoes.html     Passo a passo para a equipe
+├── style.css
+├── config.js           ⚙️ cores, ícones, mapas base
+├── app.js
 ├── api/
-│   ├── _geo.js         Módulo interno: links do Maps, geocodificação, reverso
-│   ├── dados.js        Lê a planilha → localiza → devolve GeoJSON
-│   ├── resolver.js     Apoio ao formulário (link/endereço → ponto, ponto → endereço)
-│   └── incluir.js      Recebe o formulário → valida → manda gravar
+│   ├── _geo.js         Links do Maps, geocodificação, reverso
+│   ├── _planilha.js    Canal único com o Apps Script
+│   ├── dados.js        Lê a planilha → GeoJSON
+│   ├── resolver.js     Link/endereço → ponto, ponto → endereço
+│   └── registro.js     Incluir, editar, mudar situação
 ├── apps-script/
-│   └── Codigo.gs       Script que mora DENTRO da planilha e faz a gravação
+│   └── Codigo.gs       Roda DENTRO da planilha (instalar uma vez)
 ├── package.json
 └── vercel.json
 ```
@@ -30,193 +31,103 @@ Mapa público das organizações parceiras da região do M'Boi Mirim (Zona Sul d
 
 ---
 
-## 2. Pré-requisito na planilha ⚠️
+## 2. Onde os dados ficam
 
-A planilha **precisa estar pública para leitura**. Sem isso o mapa aparece vazio.
+A planilha do Google Sheets continua sendo o banco de dados, mas passa a ser **privada**: ninguém além de você a abre. Todo acesso — leitura e escrita — passa pelo Apps Script instalado dentro dela.
 
-1. Abra a planilha → **Compartilhar**
-2. Em "Acesso geral", selecione **Qualquer pessoa com o link**
-3. Papel: **Leitor**
-
-Layout esperado (linha 1 = cabeçalho):
-
-| Coluna | Cabeçalho | Uso |
-|---|---|---|
-| A | `Nome da Organização` | Busca e título do balão |
-| B | `Serviços oferecidos` | Exibido no balão |
-| C | `Endereco` | **Localização — fallback** |
-| D | `Latitude` | **Localização — prioridade** |
-| E | `Longitude` | **Localização — prioridade** |
-| F | `Contato` | Exibido no balão |
-| — | `Categoria` | Cor + ícone do ponto, filtro e legenda |
-| — | `Subprefeitura` | Filtro |
-| … | *(livre)* | Novas colunas aparecem no balão automaticamente |
-
-`Categoria` e `Subprefeitura` são localizadas **pelo nome do cabeçalho**, não pela posição — pode colocá-las em qualquer coluna. Se alguma não existir, o filtro correspondente simplesmente não aparece.
-
-Três propriedades importantes:
-
-- **Colunas novas não exigem alteração de código.** Se alguém adicionar `Horário de funcionamento` na coluna G, ela passa a aparecer no balão e na exportação sozinha.
-- **Colunas vazias em uma linha não aparecem** no balão daquela organização.
-- **`Latitude` e `Longitude` não aparecem no balão** (seriam ruído para o público), mas saem na exportação `.xlsx`.
-
-### Preenchendo Latitude / Longitude
-
-Aceita vírgula ou ponto como separador decimal — `-23,685918` e `-23.685918` funcionam igual.
-
-Deixar as duas em branco é perfeitamente válido: a organização será localizada pelo endereço. Preencher é o caminho para **cravar** a posição exata, e é o que você deve fazer sempre que o ponto automático cair no lugar errado.
-
-Duas proteções embutidas: se as colunas estiverem trocadas (longitude em `Latitude`), o sistema detecta e corrige sozinho; e se a coordenada cair fora da Zona Sul, o ponto é plotado assim mesmo — sua entrada manual sempre vence — mas o balão avisa `fora da região esperada`.
-
-**Atalho útil:** exporte o `.xlsx` depois que o mapa carregar. As colunas `Latitude`/`Longitude` vêm preenchidas inclusive nas linhas que foram geocodificadas pelo endereço — basta conferir e colar de volta na planilha para congelar as posições.
-
----
-
-## 3. Publicar no GitHub + Vercel
-
-**a) GitHub**
-
-```bash
-cd geoportal-mboi
-git init
-git add .
-git commit -m "Geoportal Organizações Parceiras - M'Boi Mirim"
-git branch -M main
-git remote add origin https://github.com/SEU-USUARIO/geoportal-mboi.git
-git push -u origin main
+```
+navegador → /api/dados     → Apps Script → planilha   (leitura)
+navegador → /api/registro  → Apps Script → planilha   (escrita)
 ```
 
-**b) Vercel**
+O navegador nunca fala com a planilha. A URL do Apps Script e o código de acesso vivem só em variáveis de ambiente da Vercel, fora do alcance de quem abrir o código-fonte da página.
 
-1. Acesse [vercel.com](https://vercel.com) e entre com a conta do GitHub
-2. **Add New → Project → Import** o repositório
-3. Framework Preset: **Other**. Build Command e Output Directory: **deixe em branco**
-4. **Deploy**
+**Por que manter a planilha e não um banco de dados de verdade:** você continua com um lugar para consertar dados na mão. Um typo, um alfinete 200 m fora do lugar — você abre a planilha e corrige. Com Postgres, cada correção exigiria uma tela de administração ou SQL. Para uma base de dezenas ou poucas centenas de organizações, a planilha ganha.
 
-Pronto — a URL pública sai em cerca de um minuto. Cada `git push` na branch `main` republica o site automaticamente.
+### Colunas
 
-**c) Variáveis de ambiente (opcional)**
+O script cria sozinho o que faltar. Você não precisa mexer na planilha.
 
-Em *Settings → Environment Variables*, se quiser trocar de planilha sem mexer no código:
-
-| Variável | Padrão |
-|---|---|
-| `SHEET_ID` | `1jASW5jiS2ji4yl-YkUxMM0XSj9UtF6UwBF0cTN_rHUU` |
-| `SHEET_NAME` | `Página1` |
-| `GEOCODER_UA` | identificação enviada ao Nominatim — vale colocar um e-mail de contato |
+| Coluna | Origem | Uso |
+|---|---|---|
+| `Nome da Organização` | formulário | busca, título do balão |
+| `Serviços oferecidos` | formulário | balão |
+| `Endereco` | formulário / reverso | balão, exportação |
+| `Latitude` / `Longitude` | alfinete | posição no mapa — **não** aparece no balão nem na exportação |
+| `Contato` | formulário | balão |
+| `Categoria` | formulário | cor, ícone, filtro, legenda |
+| `Subprefeitura` | formulário | filtro |
+| `ID` | automático | identifica a linha na edição — **não** exportado |
+| `Situação` | botões do balão | `Em funcionamento` ou `Encerrada` |
+| `Atualizado em` | automático | data da última mexida |
+| `Atualizado por` | formulário | quem informou |
+| `Observação` | formulário | histórico das mudanças de situação |
 
 ---
 
-## 4. Como funciona a geocodificação
+## 3b. Instalação do Apps Script
 
-A função `api/dados.js` tenta, **em cascata**, e para na primeira que resolver:
+Siga o passo a passo comentado no topo de `apps-script/Codigo.gs`. Ao final você terá uma URL terminada em `/exec`.
 
-1. **Colunas `Latitude` / `Longitude`** da planilha — prioridade absoluta, sem nenhuma chamada externa
-2. **Cache** — endereço já resolvido em uma chamada anterior
-3. **Geocodificação pelo endereço** (coluna C), ela mesma em cascata:
-   - Nominatim (OpenStreetMap) com o endereço completo
-   - ViaCEP: o CEP é extraído de dentro do próprio endereço → logradouro + bairro → Nominatim
-   - Nominatim apenas com o CEP (menos preciso, cai no centro da faixa)
+Na Vercel, em *Settings → Environment Variables*:
 
-Não existe mais coluna de CEP: quando ele é necessário, é lido do final da string de endereço.
+| Variável | Valor |
+|---|---|
+| `APPS_SCRIPT_URL` | a URL `/exec` |
+| `CODIGO_ACESSO` | a senha combinada com a equipe |
 
-Todo resultado passa por uma **validação de retângulo** (`BBOX` em `api/dados.js`): se o ponto cair fora da Zona Sul de São Paulo, é descartado e a cascata continua. Isso evita o clássico erro de mandar a organização para outro estado por causa de um nome de rua repetido.
+Depois: *Deployments* → "..." do último → **Redeploy**. Variáveis novas não valem para deploys já publicados.
 
-O balão mostra, no rodapé, **qual estratégia localizou o ponto** — útil para saber em quais linhas vale preencher LATITUDE/LONGITUDE na mão.
+**Só então** torne a planilha privada: *Compartilhar → Acesso geral → Restrito*.
 
-**Cache em três camadas:**
+Enquanto `APPS_SCRIPT_URL` não existir, o site cai no modo antigo (CSV público) e o formulário se desativa sozinho com um aviso. Nada quebra durante a migração.
 
-- as colunas `Latitude`/`Longitude` da planilha (permanente)
-- memória da função (chamadas seguidas não regeocodificam nada)
-- CDN da Vercel (15 min quando tudo está resolvido, 1 min quando há pendências)
+**Sempre que editar o `Codigo.gs`**, salvar não basta: *Implantar → Gerenciar implantações → lápis → Versão: Nova → Implantar*.
 
-**Limite por chamada:** vale só para linhas *sem* coordenada. No máximo 40 endereços novos ou 45 segundos, porque o Nominatim exige 1 requisição por segundo. Se você colar 100 organizações de uma vez, o mapa avisa quantas ficaram pendentes; basta clicar em **Atualizar** algumas vezes até zerar. Depois disso fica instantâneo.
+---
+
+## 4. Como a equipe usa
+
+Tudo pelo site, com o código de acesso. Nada de planilha.
+
+- **Incluir** — botão verde no cabeçalho. Nome, serviços, categoria, contato e a posição.
+- **Corrigir** — clique no ponto → botão *Corrigir* no balão. Abre o mesmo formulário preenchido, e o registro continua sendo o mesmo (sem duplicata).
+- **Continua aberta** — um clique. Registra a data, e o balão passa a mostrar "informação confirmada em…".
+- **Fechou** — some do mapa, mas **nada é apagado**: vira `Situação = Encerrada`, com quem informou, quando e o motivo. O checkbox *Mostrar encerradas*, no painel esquerdo, traz de volta, e daí o botão vira *Voltou a funcionar*.
+
+O nome de quem informou e o código ficam guardados no navegador depois do primeiro uso, então confirmar funcionamento vira mesmo um clique.
+
+### Três formas de marcar a posição
+
+O **alfinete é a fonte da verdade**. Link do Maps, endereço digitado e arraste manual são só três formas de posicioná-lo; o que é gravado é sempre a coordenada final.
+
+| Caminho | Quando usar | Precisão |
+|---|---|---|
+| Colar link do Google Maps | melhor no celular (Compartilhar → Copiar link) | exata |
+| Escrever o endereço + Achar | quando não se tem o link | aproximada, confira |
+| Arrastar o alfinete | sempre disponível, e o mais preciso | exata |
 
 ---
 
 ## 4b. Categorias, cores e ícones
 
-Nada aqui é obrigatório: o sistema **descobre sozinho** quais categorias e subprefeituras existem na planilha e monta os filtros e a legenda a partir do que encontrar.
+O sistema **descobre sozinho** quais categorias e subprefeituras existem e monta filtros e legenda com o que encontrar.
 
-### Acrescentar uma categoria
-
-1. Acrescente o valor na validação de dados da planilha
-2. *(opcional)* Acrescente a linha correspondente no bloco `categorias` do `config.js`
-
-Pulando o passo 2 nada quebra — a categoria aparece com uma cor automática da paleta e o ícone padrão. O passo 2 serve só para **escolher** a cor e o ícone.
+Para escolher cor e ícone de uma categoria, acrescente a linha no bloco `categorias` do `config.js`:
 
 ```js
 "Agroecologia Urbana": { cor: "#27ae60", icone: "fa-seedling" },
 ```
 
-O nome é comparado ignorando acentos e maiúsculas, então `"Saude"` no `config.js` casa com `"Saúde"` na planilha.
+Sem isso, a categoria aparece do mesmo jeito, com cor automática da paleta e ícone padrão. Ícones em [fontawesome.com](https://fontawesome.com/search?o=r&m=free&s=solid) — filtre por **Free** e **Solid**.
 
-### Trocar um ícone
-
-Procure em [fontawesome.com](https://fontawesome.com/search?o=r&m=free&s=solid) — filtre por **Free** e **Solid** — e copie o nome que começa com `fa-`. Ícones marcados como Pro não funcionam.
-
-### Acrescentar uma subprefeitura
-
-Só na planilha. O filtro se monta sozinho, sem configuração.
+A lista `subprefeituras` do `config.js` serve só para montar o menu do formulário.
 
 ---
 
-## 4c. Página de instruções
+## 4c. Exportação
 
-O `instrucoes.html` é a página ligada ao botão **Como incluir** do cabeçalho, escrita para pessoas com pouca familiaridade com computador. Cobre: abrir a planilha, achar a linha vazia, copiar o endereço completo do Google Maps (com ênfase no CEP), usar as listas suspensas e, como passo opcional, pegar coordenadas pelo clique com o botão direito no Google Maps.
-
-As ilustrações são desenhos vetoriais embutidos no próprio arquivo — não há imagens externas para se perder. Para trocá-las por capturas de tela reais, coloque os arquivos numa pasta `img/` e substitua cada bloco `<svg>...</svg>` por `<img src="./img/nome.png" alt="descrição">`.
-
----
-
-## 4d. Inclusão pelo próprio site
-
-O formulário em `incluir.html` deixa a pessoa cadastrar uma organização sem abrir a planilha. **O alfinete arrastável é a fonte da verdade**: link do Maps, endereço digitado e arraste manual são só três formas de posicioná-lo, e o que vai para a planilha é sempre a coordenada final. Isso elimina a geocodificação por adivinhação.
-
-### Como o dado chega à planilha
-
-```
-navegador → /api/incluir (valida) → Apps Script (grava) → planilha
-```
-
-O navegador nunca fala com a planilha. A URL do Apps Script e o código de acesso ficam só em variáveis de ambiente na Vercel, fora do alcance de quem abrir o código-fonte da página.
-
-### Instalação (uma vez só)
-
-1. Abra `apps-script/Codigo.gs` e siga o passo a passo comentado no topo do arquivo
-2. Ao final você terá uma URL terminada em `/exec`
-3. Na Vercel, em *Settings → Environment Variables*, crie:
-
-| Variável | Valor |
-|---|---|
-| `APPS_SCRIPT_URL` | a URL `/exec` copiada |
-| `CODIGO_ACESSO` | a senha combinada com a equipe |
-
-4. Aba *Deployments* → botão "..." do último → **Redeploy**
-
-Enquanto `APPS_SCRIPT_URL` não existir, o formulário se desativa sozinho e mostra um aviso apontando para a planilha. Nada quebra.
-
-### Moderação
-
-No `Codigo.gs`, mudando `MODERACAO` para `true`, os envios do site passam a cair numa aba `Pendentes` (criada sozinha, com o mesmo cabeçalho) em vez da aba principal. Você revisa e move as linhas aprovadas.
-
-### Sobre a segurança
-
-O Apps Script precisa ser publicado como "Qualquer pessoa" para o site conseguir gravar — a proteção real é o `CODIGO_ACESSO`. Isso basta contra robôs e curiosos, mas não é uma senha individual: quem tem o código pode incluir. Para uma base pública de organizações parceiras, é uma troca razoável. Se um dia precisar de controle por pessoa, o caminho seria Google Forms com login exigido, ou autenticação de verdade no portal.
-
----
-
-## 4e. Links do Google Maps na coluna Endereço
-
-A coluna `Endereco` aceita três conteúdos diferentes, e a API reconhece qual é qual:
-
-| O que a pessoa cola | Como é resolvido | Precisão |
-|---|---|---|
-| `https://maps.app.goo.gl/…` | Expande o link e lê as coordenadas de dentro | Exata |
-| `-23.685918, -46.792683` | Usa direto | Exata |
-| `R. Feitiço da Vila, 399 - …, 05879-000` | Nominatim → ViaCEP → CEP | Aproximada |
-
-O link é o melhor caminho no celular: no Google Maps é **Compartilhar → Copiar link**, um toque. E é mais preciso que o endereço em texto, porque não passa por adivinhação nenhuma.
+O botão **Exportar** baixa um `.xlsx` com as organizações visíveis no momento (respeitando busca e filtros). Saem `Latitude`, `Longitude` e `ID` — são dados internos.
 
 ---
 

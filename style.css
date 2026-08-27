@@ -904,6 +904,105 @@ body, html {
     flex-shrink: 0;
 }
 
+/* ==========================================================================
+   AÇÕES NO BALÃO / MODAL DE SITUAÇÃO
+   ========================================================================== */
+
+.popup-dossier.encerrada { opacity: 0.92; }
+
+.popup-selo {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(148, 163, 184, 0.22); border: 1px solid #94a3b8;
+    color: #cbd5e1; font-size: 0.68rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 3px 9px; border-radius: 10px; margin-top: 7px;
+}
+
+.popup-verificado {
+    margin-top: 10px; padding-top: 8px;
+    border-top: 1px dashed rgba(255,255,255,0.15);
+    font-size: 0.7rem; color: var(--text-dim);
+    display: flex; align-items: center; gap: 6px;
+}
+
+.popup-acoes {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+}
+
+.pop-btn {
+    flex: 1 1 auto; min-width: 88px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 7px 10px; border-radius: 7px; border: 1px solid var(--border-color);
+    background: rgba(255,255,255,0.07); color: var(--text-main);
+    font-size: 0.73rem; font-weight: 600; font-family: inherit;
+    cursor: pointer; text-decoration: none; transition: var(--transition);
+}
+
+.pop-btn:hover { background: rgba(255,255,255,0.16); }
+.pop-btn.editar:hover { border-color: #00d1b2; color: #00d1b2; }
+.pop-btn.confirmar:hover, .pop-btn.reabrir:hover { border-color: #34d399; color: #34d399; }
+.pop-btn.encerrar:hover { border-color: #f87171; color: #f87171; }
+
+.chk-encerradas {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.76rem; color: var(--text-muted);
+    padding: 6px 4px 10px; cursor: pointer;
+}
+
+.chk-encerradas input { width: 14px; height: 14px; accent-color: var(--primary); cursor: pointer; margin: 0; }
+
+.modal-fundo {
+    position: fixed; inset: 0; z-index: 4000;
+    background: rgba(5, 20, 22, 0.72); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; padding: 20px;
+}
+
+.modal-fundo.aberto { display: flex; }
+
+.modal-caixa {
+    background: #0f2427; border: 1px solid var(--border-accent);
+    border-radius: var(--radius-lg); padding: 24px;
+    width: 100%; max-width: 420px; box-shadow: var(--shadow-lg);
+}
+
+.modal-caixa h3 {
+    font-family: 'Outfit', sans-serif; font-size: 1.15rem;
+    color: var(--text-main); margin-bottom: 10px;
+}
+
+.modal-caixa p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 18px; }
+
+.modal-campo { display: block; margin-bottom: 13px; }
+.modal-campo span { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+.modal-campo span em { color: #f87171; font-style: normal; }
+
+.modal-campo input {
+    width: 100%; padding: 11px 12px; font-size: 0.92rem; font-family: inherit;
+    background: rgba(15, 23, 42, 0.75); border: 1px solid var(--border-color);
+    border-radius: 8px; color: var(--text-main);
+}
+
+.modal-campo input:focus { outline: none; border-color: var(--primary); }
+.modal-campo input::placeholder { color: var(--text-dim); }
+
+.modal-erro { font-size: 0.82rem; color: #f87171; min-height: 18px; margin-bottom: 6px; }
+
+.modal-acoes { display: flex; gap: 10px; margin-top: 8px; }
+
+.modal-btn {
+    flex: 1; padding: 12px; border-radius: 9px; border: none;
+    font-size: 0.9rem; font-weight: 700; font-family: inherit; cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-btn:disabled { opacity: 0.6; cursor: wait; }
+.modal-btn.neutro { background: rgba(255,255,255,0.1); color: var(--text-main); }
+.modal-btn.neutro:hover { background: rgba(255,255,255,0.18); }
+.modal-btn.ok { background: linear-gradient(135deg, #00a86b, #00d1b2); color: #062a22; }
+.modal-btn.perigo { background: linear-gradient(135deg, #dc2626, #f87171); color: #fff; }
+
 /* Botão de inclusão no cabeçalho */
 .btn-header.btn-incluir {
     background: linear-gradient(135deg, #00a86b, #00d1b2);

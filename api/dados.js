@@ -1,37 +1,43 @@
-import {
-    USER_AGENT, BBOX, dentroDaRegiao, normalizar, parseCoord,
-    resolverLocalizacao
-} from './_geo.js';
+/**
+ * /api/dados — devolve o GeoJSON que alimenta o mapa
+ *
+ * Lê a planilha PRIVADA através do Apps Script. Se APPS_SCRIPT_URL não estiver
+ * configurada, cai no modo antigo (CSV público) para não deixar o site no ar
+ * sem dados durante a migração.
+ */
+
+import { dentroDaRegiao, normalizar, parseCoord, resolverLocalizacao } from './_geo.js';
+import { chamarPlanilha, PLANILHA_ATIVA } from './_planilha.js';
 
 const SHEET_ID = process.env.SHEET_ID || '1jASW5jiS2ji4yl-YkUxMM0XSj9UtF6UwBF0cTN_rHUU';
 const SHEET_NAME = process.env.SHEET_NAME || 'Página1';
 
-// Limites por invocação (evita estourar o tempo máximo da função)
 const ORCAMENTO_MS = 45000;
 const MAX_NOVOS_POR_CHAMADA = 40;
 
-// Cache de localização em memória (persiste enquanto o lambda estiver quente)
 const cacheGeo = new Map();
 
-// Rótulo para células de Categoria / Subprefeitura em branco
 const SEM_VALOR = 'Não informado';
+const SITUACAO_ENCERRADA = 'Encerrada';
 
-/** Parser de CSV que respeita aspas, vírgulas internas e quebras de linha. */
+// Colunas de controle: existem para o sistema, não para quem consulta o mapa
+const COLUNAS_INTERNAS = ['id', 'latitude', 'longitude'];
+
+/* ==========================================================================
+   LEITURA
+   ========================================================================== */
+
+/** Modo antigo: CSV público. Mantido como rede de segurança. */
 function parseCSV(texto) {
     const linhas = [];
-    let linha = [];
-    let campo = '';
-    let dentroAspas = false;
-
+    let linha = [], campo = '', dentroAspas = false;
     for (let i = 0; i < texto.length; i++) {
         const c = texto[i];
         if (dentroAspas) {
             if (c === '"') {
                 if (texto[i + 1] === '"') { campo += '"'; i++; }
                 else dentroAspas = false;
-            } else {
-                campo += c;
-            }
+            } else campo += c;
         } else {
             if (c === '"') dentroAspas = true;
             else if (c === ',') { linha.push(campo); campo = ''; }
@@ -43,25 +49,41 @@ function parseCSV(texto) {
     return linhas;
 }
 
-/* ==========================================================================
-   LEITURA DA PLANILHA
-   ========================================================================== */
-
-async function lerPlanilha() {
+async function lerViaCSV() {
     const urls = [
         `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`,
         `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`
     ];
-
     for (const url of urls) {
         try {
-            const resp = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+            const resp = await fetch(url);
             if (!resp.ok) continue;
             const texto = await resp.text();
-            if (texto && !texto.trim().startsWith('<')) return texto;
-        } catch { /* tenta a próxima URL */ }
+            if (texto && !texto.trim().startsWith('<')) {
+                const linhas = parseCSV(texto).filter((l) => l.some((c) => String(c).trim() !== ''));
+                if (linhas.length < 1) return { campos: [], registros: [] };
+                const campos = linhas[0].map((h) => String(h).trim()).filter(Boolean);
+                const registros = linhas.slice(1).map((l) => {
+                    const o = {};
+                    campos.forEach((c, i) => { o[c] = String(l[i] ?? '').trim(); });
+                    return o;
+                });
+                return { campos, registros };
+            }
+        } catch { /* tenta a próxima */ }
     }
-    throw new Error('Não foi possível ler a planilha. Verifique se ela está compartilhada como "qualquer pessoa com o link pode ver".');
+    throw new Error('Não foi possível ler a planilha.');
+}
+
+async function lerPlanilha() {
+    if (PLANILHA_ATIVA) {
+        const r = await chamarPlanilha({ acao: 'listar' });
+        if (!r || r.ok === false) {
+            throw new Error((r && r.erro) || 'A planilha não respondeu.');
+        }
+        return { campos: r.campos || [], registros: r.registros || [] };
+    }
+    return await lerViaCSV();
 }
 
 /* ==========================================================================
@@ -72,107 +94,88 @@ export default async function handler(req, res) {
     const inicio = Date.now();
 
     try {
-        const csv = await lerPlanilha();
-        const linhas = parseCSV(csv).filter((l) => l.some((c) => String(c).trim() !== ''));
+        const { campos: cabecalhos, registros } = await lerPlanilha();
 
-        if (linhas.length < 2) {
-            return responder(res, {
-                type: 'FeatureCollection',
-                features: [],
-                meta: { campos: [], camposPopup: [], categorias: [], subprefeituras: [], total: 0, geocodificados: 0, pendentes: 0, aviso: 'Planilha sem registros preenchidos.' }
-            }, 60);
+        if (cabecalhos.length === 0) {
+            return responder(res, vazio('Planilha sem cabeçalho.'), 60);
         }
 
-        const cabecalhos = linhas[0].map((h) => String(h).trim());
-        const registros = linhas.slice(1);
-
-        // Localiza colunas pelo nome; se não achar, cai na posição padrão
-        const idx = (candidatos, posicaoPadrao) => {
+        const achar = (candidatos) => {
             for (const cand of candidatos) {
-                const i = cabecalhos.findIndex((h) => normalizar(h) === normalizar(cand));
-                if (i !== -1) return i;
+                const c = cabecalhos.find((h) => normalizar(h) === normalizar(cand));
+                if (c) return c;
             }
-            return posicaoPadrao;
+            return null;
         };
 
-        const iNome = idx(['Nome da Organização', 'Organização', 'Nome'], 0);
-        const iEndereco = idx(['Endereco', 'Endereço'], 2);
-        const iLat = cabecalhos.findIndex((h) => /^lat(itude)?$/i.test(String(h).trim()));
-        const iLon = cabecalhos.findIndex((h) => /^(lon|lng|long|longitude)$/i.test(String(h).trim()));
-        const iCategoria = idx(['Categoria', 'Categorias', 'Tipo'], -1);
-        const iSubpref = idx(['Subprefeitura', 'Sub-prefeitura', 'Sub prefeitura'], -1);
+        const cNome = achar(['Nome da Organização', 'Organização', 'Nome']) || cabecalhos[0];
+        const cEndereco = achar(['Endereco', 'Endereço']);
+        const cLat = cabecalhos.find((h) => /^lat(itude)?$/i.test(h));
+        const cLon = cabecalhos.find((h) => /^(lon|lng|long|longitude)$/i.test(h));
+        const cCategoria = achar(['Categoria', 'Categorias', 'Tipo']);
+        const cSubpref = achar(['Subprefeitura', 'Sub-prefeitura']);
+        const cId = achar(['ID', 'Id']);
+        const cSituacao = achar(['Situação', 'Situacao', 'Status']);
+        const cAtualizadoEm = achar(['Atualizado em']);
+        const cAtualizadoPor = achar(['Atualizado por']);
 
-        // campos      → todas as colunas, na ordem da planilha (usado na exportação .xlsx)
-        // camposPopup → sem Latitude/Longitude (usado no balão do mapa)
-        const campos = cabecalhos.map((h, i) => ({ nome: h, i })).filter((c) => c.nome !== '');
-        const camposPopup = campos.filter((c) => c.i !== iLat && c.i !== iLon);
+        // campos      → exportação (.xlsx): sem ID, sem coordenadas
+        // camposPopup → balão do mapa: idem
+        const campos = cabecalhos.filter((h) => !COLUNAS_INTERNAS.includes(normalizar(h)));
+        const camposPopup = campos.filter((h) => h !== cNome);
 
-        // Valores distintos encontrados (alimentam os filtros e a legenda)
         const contagemCategoria = new Map();
         const contagemSubpref = new Map();
 
         const features = [];
-        let geocodificados = 0;
-        let pendentes = 0;
-        let porCoordenada = 0;
-        let porEndereco = 0;
-        let novos = 0;
+        let geocodificados = 0, pendentes = 0, encerradas = 0;
+        let porCoordenada = 0, porEndereco = 0, novos = 0;
 
         for (const linha of registros) {
-            const nome = String(linha[iNome] || '').trim();
-            if (!nome) continue; // ignora linhas em branco
+            const nome = String(linha[cNome] || '').trim();
+            if (!nome) continue;
 
-            const endereco = String(linha[iEndereco] || '').trim();
+            const endereco = cEndereco ? String(linha[cEndereco] || '').trim() : '';
+            const categoria = (cCategoria && String(linha[cCategoria] || '').trim()) || SEM_VALOR;
+            const subpref = (cSubpref && String(linha[cSubpref] || '').trim()) || SEM_VALOR;
+            const situacao = (cSituacao && String(linha[cSituacao] || '').trim()) || 'Em funcionamento';
+            const encerrada = normalizar(situacao) === normalizar(SITUACAO_ENCERRADA);
 
-            const props = {};
-            for (const c of campos) props[c.nome] = String(linha[c.i] ?? '').trim();
-
-            // Categoria e Subprefeitura (célula vazia vira SEM_VALOR)
-            const categoria = iCategoria !== -1
-                ? (String(linha[iCategoria] || '').trim() || SEM_VALOR) : SEM_VALOR;
-            const subpref = iSubpref !== -1
-                ? (String(linha[iSubpref] || '').trim() || SEM_VALOR) : SEM_VALOR;
-
+            if (encerrada) encerradas++;
             contagemCategoria.set(categoria, (contagemCategoria.get(categoria) || 0) + 1);
             contagemSubpref.set(subpref, (contagemSubpref.get(subpref) || 0) + 1);
 
-            let ponto = null;
-            let origem = '';
+            const props = {};
+            for (const c of campos) props[c] = String(linha[c] ?? '').trim();
 
-            /* ---- 1. Latitude / Longitude da planilha (PRIORIDADE) ---- */
-            if (iLat !== -1 && iLon !== -1) {
-                let lat = parseCoord(linha[iLat]);
-                let lon = parseCoord(linha[iLon]);
+            let ponto = null, origem = '';
 
+            /* 1. Coordenadas da planilha */
+            if (cLat && cLon) {
+                let lat = parseCoord(linha[cLat]);
+                let lon = parseCoord(linha[cLon]);
                 if (Number.isFinite(lat) && Number.isFinite(lon)) {
-                    let precisao = 'coordenada da planilha';
-
-                    // Correção automática de colunas invertidas
+                    let precisao = 'coordenada cadastrada';
                     if (!dentroDaRegiao(lat, lon) && dentroDaRegiao(lon, lat)) {
                         [lat, lon] = [lon, lat];
-                        precisao = 'coordenada da planilha (lat/long invertidas — corrigido)';
+                        precisao = 'coordenada cadastrada (lat/long invertidas — corrigido)';
                     } else if (!dentroDaRegiao(lat, lon)) {
-                        precisao = 'coordenada da planilha (fora da região esperada)';
+                        precisao = 'coordenada cadastrada (fora da região esperada)';
                     }
-
                     ponto = { lat, lon, precisao };
                     origem = 'planilha';
                     porCoordenada++;
                 }
             }
 
-            /* ---- 2. Cache em memória ---- */
+            /* 2. Cache */
             const chave = normalizar(endereco);
             if (!ponto && chave && cacheGeo.has(chave)) {
                 const cacheado = cacheGeo.get(chave);
-                if (cacheado) {
-                    ponto = cacheado;
-                    origem = 'cache';
-                    porEndereco++;
-                }
+                if (cacheado) { ponto = cacheado; origem = 'cache'; porEndereco++; }
             }
 
-            /* ---- 3. Geocodificação pelo endereço ---- */
+            /* 3. Resolução pelo endereço (link do Maps, coordenada colada ou texto) */
             if (!ponto && chave && !cacheGeo.has(chave)) {
                 const temTempo = Date.now() - inicio < ORCAMENTO_MS && novos < MAX_NOVOS_POR_CHAMADA;
                 if (temTempo) {
@@ -184,28 +187,34 @@ export default async function handler(req, res) {
                         origem = 'geocodificação';
                         porEndereco++;
                     } else {
-                        cacheGeo.set(chave, null); // marca como insolúvel para não repetir
+                        cacheGeo.set(chave, null);
                     }
                 }
             }
 
+            const meta = {
+                _id: cId ? String(linha[cId] || '').trim() : '',
+                _categoria: categoria,
+                _subprefeitura: subpref,
+                _situacao: situacao,
+                _encerrada: encerrada,
+                _atualizadoEm: cAtualizadoEm ? String(linha[cAtualizadoEm] || '').trim() : '',
+                _atualizadoPor: cAtualizadoPor ? String(linha[cAtualizadoPor] || '').trim() : ''
+            };
+
             if (ponto) {
                 geocodificados++;
-                // Devolve as coordenadas efetivas nas colunas da planilha (útil na exportação)
-                if (iLat !== -1) props[cabecalhos[iLat]] = ponto.lat.toFixed(6);
-                if (iLon !== -1) props[cabecalhos[iLon]] = ponto.lon.toFixed(6);
-
                 features.push({
                     type: 'Feature',
                     geometry: { type: 'Point', coordinates: [ponto.lon, ponto.lat] },
-                    properties: { ...props, _categoria: categoria, _subprefeitura: subpref, _precisao: ponto.precisao, _origem: origem }
+                    properties: { ...props, ...meta, _precisao: ponto.precisao, _origem: origem }
                 });
             } else {
                 pendentes++;
                 features.push({
                     type: 'Feature',
                     geometry: null,
-                    properties: { ...props, _categoria: categoria, _subprefeitura: subpref, _precisao: 'não localizado', _origem: '' }
+                    properties: { ...props, ...meta, _precisao: 'não localizado', _origem: '' }
                 });
             }
         }
@@ -214,26 +223,24 @@ export default async function handler(req, res) {
             type: 'FeatureCollection',
             features,
             meta: {
-                campos: campos.map((c) => c.nome),
-                camposPopup: camposPopup.map((c) => c.nome),
-                colunaNome: cabecalhos[iNome] || 'Nome da Organização',
-                colunaEndereco: cabecalhos[iEndereco] || 'Endereco',
-                colunaCategoria: iCategoria !== -1 ? cabecalhos[iCategoria] : null,
-                colunaSubprefeitura: iSubpref !== -1 ? cabecalhos[iSubpref] : null,
+                campos, camposPopup,
+                colunaNome: cNome,
+                colunaEndereco: cEndereco || 'Endereco',
+                colunaCategoria: cCategoria,
+                colunaSubprefeitura: cSubpref,
                 categorias: ordenarContagem(contagemCategoria),
                 subprefeituras: ordenarContagem(contagemSubpref),
                 total: features.length,
-                geocodificados,
-                porCoordenada,
-                porEndereco,
-                pendentes,
+                geocodificados, porCoordenada, porEndereco, pendentes, encerradas,
+                fonte: PLANILHA_ATIVA ? 'apps-script' : 'csv-publico',
                 atualizado: new Date().toISOString(),
                 duracaoMs: Date.now() - inicio
             }
         };
 
-        // Se ainda há pendências, cacheia por pouco tempo para que a próxima chamada complete
-        return responder(res, payload, pendentes > 0 ? 60 : 900);
+        // Com o Apps Script o cache é curto: edições precisam aparecer rápido
+        const segundos = pendentes > 0 ? 30 : (PLANILHA_ATIVA ? 60 : 900);
+        return responder(res, payload, segundos);
 
     } catch (erro) {
         res.setHeader('Cache-Control', 'no-store');
@@ -245,7 +252,14 @@ export default async function handler(req, res) {
     }
 }
 
-/** Converte o Map de contagens em lista ordenada alfabeticamente ('Não informado' por último). */
+function vazio(aviso) {
+    return {
+        type: 'FeatureCollection',
+        features: [],
+        meta: { campos: [], camposPopup: [], categorias: [], subprefeituras: [], total: 0, geocodificados: 0, pendentes: 0, aviso }
+    };
+}
+
 function ordenarContagem(mapa) {
     return [...mapa.entries()]
         .map(([nome, total]) => ({ nome, total }))

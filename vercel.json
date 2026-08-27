@@ -4,14 +4,28 @@
     "api/dados.js": {
       "maxDuration": 60,
       "memory": 512
+    },
+    "api/registro.js": {
+      "maxDuration": 30,
+      "memory": 256
+    },
+    "api/resolver.js": {
+      "maxDuration": 30,
+      "memory": 256
     }
   },
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
     }
   ]

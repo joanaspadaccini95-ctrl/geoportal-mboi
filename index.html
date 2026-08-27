@@ -46,10 +46,6 @@
                 <i class="fa-solid fa-rotate"></i> <span class="btn-label">Atualizar</span>
             </button>
 
-            <a class="btn-header" id="btnPlanilha" href="#" target="_blank" rel="noopener" title="Abrir a planilha" hidden>
-                <i class="fa-solid fa-table"></i> <span class="btn-label">Planilha</span>
-            </a>
-
             <button class="btn-header btn-primary" id="btnExport" title="Exportar em .xlsx">
                 <i class="fa-solid fa-file-excel"></i> <span class="btn-label">Exportar</span>
             </button>
@@ -110,6 +106,10 @@
                         <span>Organizações</span>
                         <span class="status-count" id="listCount">0</span>
                     </label>
+                    <label class="chk-encerradas">
+                        <input type="checkbox" id="chkEncerradas">
+                        <span id="rotuloEncerradas">Mostrar encerradas</span>
+                    </label>
                     <div class="org-list" id="orgList"></div>
                 </div>
 
@@ -144,6 +144,38 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- Modal: confirmar funcionamento / informar fechamento -->
+<div class="modal-fundo" id="modalSituacao">
+    <div class="modal-caixa">
+        <h3 id="modalTitulo">Confirmar</h3>
+        <p id="modalTexto"></p>
+
+        <label class="modal-campo">
+            <span>Seu nome <em>*</em></span>
+            <input type="text" id="modalQuem" maxlength="120" autocomplete="off"
+                   placeholder="Para ficar registrado quem informou">
+        </label>
+
+        <label class="modal-campo">
+            <span>Código de acesso <em>*</em></span>
+            <input type="text" id="modalCodigo" autocomplete="off">
+        </label>
+
+        <label class="modal-campo" id="modalGrupoObs" hidden>
+            <span>O que aconteceu? <em style="color:#94a3b8">(opcional)</em></span>
+            <input type="text" id="modalObs" maxlength="300" autocomplete="off"
+                   placeholder="Ex.: imóvel vazio desde janeiro">
+        </label>
+
+        <div class="modal-erro" id="modalErro"></div>
+
+        <div class="modal-acoes">
+            <button class="modal-btn neutro" id="modalCancelar">Cancelar</button>
+            <button class="modal-btn ok" id="modalConfirmar">Confirmar</button>
+        </div>
     </div>
 </div>
 

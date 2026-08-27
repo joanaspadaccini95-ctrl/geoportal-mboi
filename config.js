@@ -117,9 +117,6 @@ const CONFIG = {
     // Nome do arquivo gerado na exportação (.xlsx)
     exportFileName: "organizacoes_parceiras_mboi_mirim",
 
-    // Link da planilha (botão "Planilha" no cabeçalho). Deixe "" para ocultar.
-    planilhaUrl: "https://docs.google.com/spreadsheets/d/1jASW5jiS2ji4yl-YkUxMM0XSj9UtF6UwBF0cTN_rHUU/edit?usp=sharing",
-
     // Página de instruções (botão "Como incluir" no cabeçalho)
     instrucoesUrl: "./instrucoes.html",
 

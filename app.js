@@ -27,9 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
         filtroCategoria: new Set(),   // vazio = tudo marcado ainda não inicializado
         filtroSubpref: new Set(),
 
+        mostrarEncerradas: false,
         selecionado: null,
         carregando: false
     };
+
+    const CHAVE_CODIGO = 'mboi_codigo';
+    const CHAVE_QUEM = 'mboi_quem';
 
     /* ======================================================================
        1. INICIALIZAÇÃO
@@ -40,11 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('appSubtitle').textContent = CONFIG.subtitle;
         document.title = CONFIG.title;
 
-        if (CONFIG.planilhaUrl) {
-            const link = document.getElementById('btnPlanilha');
-            link.href = CONFIG.planilhaUrl;
-            link.hidden = false;
-        }
         if (CONFIG.incluirUrl) {
             const link = document.getElementById('btnIncluir');
             link.href = CONFIG.incluirUrl;
@@ -192,6 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
             state.filtroCategoria = new Set(state.categorias.map((c) => c.nome));
             state.filtroSubpref = new Set(state.subprefeituras.map((s) => s.nome));
 
+            const rotulo = document.getElementById('rotuloEncerradas');
+            if (rotulo) {
+                rotulo.textContent = meta.encerradas > 0
+                    ? `Mostrar encerradas (${meta.encerradas})`
+                    : 'Mostrar encerradas';
+            }
+
             renderizarFiltros();
             renderizarLegenda();
             renderizarPontos();
@@ -231,8 +237,10 @@ document.addEventListener('DOMContentLoaded', () => {
        4. MARCADORES (ícone + cor da categoria)
        ====================================================================== */
 
-    function criarIcone(categoria, destaque = false) {
-        const { cor, icone } = estiloDe(categoria);
+    function criarIcone(categoria, destaque = false, encerrada = false) {
+        const base = estiloDe(categoria);
+        const cor = encerrada ? '#94a3b8' : base.cor;
+        const icone = base.icone;
         const tamanho = destaque ? CONFIG.marcador.tamanhoDestaque : CONFIG.marcador.tamanho;
 
         return L.divIcon({
@@ -257,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const categoria = f.properties._categoria || CONFIG.semValor;
 
             const marcador = L.marker([lat, lon], {
-                icon: criarIcone(categoria, false),
+                icon: criarIcone(categoria, false, f.properties._encerrada),
                 title: f.properties[state.colunaNome] || ''
             });
 
@@ -298,16 +306,48 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<div class="popup-footer"><i class="fa-solid fa-location-dot"></i> Localização por ${escapar(props._precisao)}</div>`
             : '';
 
+        const encerrada = props._encerrada;
+        const selo = encerrada
+            ? `<div class="popup-selo"><i class="fa-solid fa-circle-xmark"></i> Encerrada</div>`
+            : '';
+
+        const verificacao = props._atualizadoEm
+            ? `<div class="popup-verificado">
+                 <i class="fa-solid fa-clock-rotate-left"></i>
+                 Informação confirmada em ${escapar(props._atualizadoEm)}${props._atualizadoPor ? ' por ' + escapar(props._atualizadoPor) : ''}
+               </div>`
+            : '';
+
+        const acoes = props._id ? `
+            <div class="popup-acoes">
+                <a class="pop-btn editar" href="${CONFIG.incluirUrl}?id=${encodeURIComponent(props._id)}">
+                    <i class="fa-solid fa-pen"></i> Corrigir
+                </a>
+                ${encerrada
+                    ? `<button class="pop-btn reabrir" data-acao="reabrir" data-id="${escapar(props._id)}" data-nome="${escapar(nome)}">
+                         <i class="fa-solid fa-rotate-left"></i> Voltou a funcionar
+                       </button>`
+                    : `<button class="pop-btn confirmar" data-acao="confirmar" data-id="${escapar(props._id)}" data-nome="${escapar(nome)}">
+                         <i class="fa-solid fa-check"></i> Continua aberta
+                       </button>
+                       <button class="pop-btn encerrar" data-acao="encerrar" data-id="${escapar(props._id)}" data-nome="${escapar(nome)}">
+                         <i class="fa-solid fa-xmark"></i> Fechou
+                       </button>`}
+            </div>` : '';
+
         return `
-            <div class="popup-dossier">
+            <div class="popup-dossier ${encerrada ? 'encerrada' : ''}">
                 <div class="popup-header">
                     <h4>
                         <span class="popup-icone" style="background:${cor}"><i class="fa-solid ${icone}"></i></span>
                         ${escapar(nome)}
                     </h4>
+                    ${selo}
                 </div>
                 ${linhas || '<div class="popup-row"><span class="popup-val">Sem informações adicionais.</span></div>'}
+                ${verificacao}
                 ${precisao}
+                ${acoes}
             </div>`;
     }
 
@@ -444,6 +484,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Filtro de subprefeitura
             if (state.subprefeituras.length > 0 && !state.filtroSubpref.has(p._subprefeitura || CONFIG.semValor)) return false;
 
+            // Organizações encerradas ficam ocultas por padrão
+            if (p._encerrada && !state.mostrarEncerradas) return false;
+
             return true;
         });
 
@@ -569,7 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const categoria = f.properties._categoria || CONFIG.semValor;
 
         state.selecionado = indice;
-        marcador.setIcon(criarIcone(categoria, true));
+        marcador.setIcon(criarIcone(categoria, true, f.properties._encerrada));
         marcador.setZIndexOffset(1000);
 
         document.querySelectorAll('.org-item').forEach((el) => {
@@ -586,11 +629,120 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.selecionado !== null && state.marcadores.has(state.selecionado)) {
             const marcador = state.marcadores.get(state.selecionado);
             const f = state.features[state.selecionado];
-            marcador.setIcon(criarIcone(f.properties._categoria || CONFIG.semValor, false));
+            marcador.setIcon(criarIcone(f.properties._categoria || CONFIG.semValor, false, f.properties._encerrada));
             marcador.setZIndexOffset(0);
         }
         state.selecionado = null;
         document.querySelectorAll('.org-item.active').forEach((el) => el.classList.remove('active'));
+    }
+
+
+    /* ======================================================================
+       8b. AÇÕES DE SITUAÇÃO (confirmar / encerrar / reabrir)
+       ====================================================================== */
+
+    let acaoPendente = null;
+
+    function abrirModalSituacao(acao, id, nome) {
+        acaoPendente = { acao, id, nome };
+
+        const textos = {
+            confirmar: {
+                titulo: 'Confirmar funcionamento',
+                texto: `Você está confirmando que <strong>${escapar(nome)}</strong> continua funcionando. A data de hoje ficará registrada.`,
+                botao: 'Confirmar que está aberta',
+                classe: 'ok',
+                pedirObs: false
+            },
+            encerrar: {
+                titulo: 'Informar que fechou',
+                texto: `<strong>${escapar(nome)}</strong> sairá do mapa, mas <strong>nada é apagado</strong>: o registro fica guardado e pode voltar a qualquer momento.`,
+                botao: 'Marcar como encerrada',
+                classe: 'perigo',
+                pedirObs: true
+            },
+            reabrir: {
+                titulo: 'Voltou a funcionar',
+                texto: `<strong>${escapar(nome)}</strong> voltará a aparecer no mapa.`,
+                botao: 'Marcar como em funcionamento',
+                classe: 'ok',
+                pedirObs: false
+            }
+        }[acao];
+
+        document.getElementById('modalTitulo').textContent = textos.titulo;
+        document.getElementById('modalTexto').innerHTML = textos.texto;
+        document.getElementById('modalGrupoObs').hidden = !textos.pedirObs;
+        document.getElementById('modalObs').value = '';
+
+        const btn = document.getElementById('modalConfirmar');
+        btn.textContent = textos.botao;
+        btn.className = `modal-btn ${textos.classe}`;
+
+        // Preenche nome e código já usados antes
+        try {
+            const c = localStorage.getItem(CHAVE_CODIGO);
+            const q = localStorage.getItem(CHAVE_QUEM);
+            if (c) document.getElementById('modalCodigo').value = c;
+            if (q) document.getElementById('modalQuem').value = q;
+        } catch { /* navegador pode bloquear */ }
+
+        document.getElementById('modalErro').textContent = '';
+        document.getElementById('modalSituacao').classList.add('aberto');
+    }
+
+    function fecharModal() {
+        document.getElementById('modalSituacao').classList.remove('aberto');
+        acaoPendente = null;
+    }
+
+    async function enviarSituacao() {
+        if (!acaoPendente) return;
+
+        const quem = document.getElementById('modalQuem').value.trim();
+        const codigo = document.getElementById('modalCodigo').value.trim();
+        const erro = document.getElementById('modalErro');
+
+        if (quem.length < 2) { erro.textContent = 'Escreva seu nome.'; return; }
+
+        const btn = document.getElementById('modalConfirmar');
+        const rotulo = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Enviando…';
+        erro.textContent = '';
+
+        try {
+            const resp = await fetch('/api/registro', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    acao: 'situacao',
+                    id: acaoPendente.id,
+                    situacao: acaoPendente.acao === 'encerrar' ? 'Encerrada' : 'Em funcionamento',
+                    observacao: document.getElementById('modalObs').value.trim(),
+                    quem, codigo
+                })
+            });
+            const d = await resp.json();
+
+            if (!d.ok) { erro.textContent = d.erro || 'Não foi possível registrar.'; return; }
+
+            try {
+                if (codigo) localStorage.setItem(CHAVE_CODIGO, codigo);
+                if (quem) localStorage.setItem(CHAVE_QUEM, quem);
+            } catch { /* segue */ }
+
+            fecharModal();
+            state.map.closePopup();
+            showToast(d.mensagem || 'Registrado.', 'success');
+            carregarDados(true);
+
+        } catch {
+            erro.textContent = 'Falha de conexão. Tente de novo.';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = rotulo;
+        }
     }
 
     /* ======================================================================
@@ -664,6 +816,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('legendaToggle').addEventListener('click', () => {
             document.getElementById('legendaBox').classList.toggle('recolhida');
+        });
+
+        // Botões dentro do balão (o conteúdo é recriado a cada abertura)
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.pop-btn[data-acao]');
+            if (!btn) return;
+            e.preventDefault();
+            abrirModalSituacao(btn.dataset.acao, btn.dataset.id, btn.dataset.nome);
+        });
+
+        document.getElementById('modalCancelar').addEventListener('click', fecharModal);
+        document.getElementById('modalConfirmar').addEventListener('click', enviarSituacao);
+        document.getElementById('modalSituacao').addEventListener('click', (e) => {
+            if (e.target.id === 'modalSituacao') fecharModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') fecharModal();
+        });
+
+        document.getElementById('chkEncerradas').addEventListener('change', (e) => {
+            state.mostrarEncerradas = e.target.checked;
+            aplicarFiltros();
         });
 
         document.getElementById('btnRefresh').addEventListener('click', () => carregarDados(true));

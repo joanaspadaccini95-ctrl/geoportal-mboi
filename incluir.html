@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Incluir organização — M'Boi Mirim</title>
+<title id="tituloPagina">Incluir organização — M'Boi Mirim</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -134,7 +134,7 @@ select { cursor: pointer; }
 <body>
 
 <div class="topo">
-    <h1>Incluir organização</h1>
+    <h1 id="cabecalhoTitulo">Incluir organização</h1>
     <a class="voltar" href="./index.html"><i class="fa-solid fa-arrow-left"></i> <span>Voltar ao mapa</span></a>
 </div>
 
@@ -142,8 +142,16 @@ select { cursor: pointer; }
 
     <div id="avisoDesativado" class="desativado" style="display:none">
         <strong>A inclusão pelo site ainda não foi ativada.</strong>
-        Por enquanto, use a planilha. Veja o passo a passo em
-        <a href="./instrucoes.html">instruções de preenchimento</a>.
+        Avise a pessoa responsável pelo mapa. Veja o passo a passo em
+        <a href="./instrucoes.html">instruções de uso</a>.
+    </div>
+
+    <div class="aviso" id="avisoEdicao" hidden style="background:#eef6f7;border-color:#a5cdd2;color:#0d4a52">
+        <i class="fa-solid fa-pen-to-square" style="color:#007C83"></i>
+        <div>
+            <strong>Você está corrigindo uma organização já cadastrada</strong>
+            Altere só o que estiver errado. O registro continua sendo o mesmo — nada é duplicado.
+        </div>
     </div>
 
     <form id="formulario">
@@ -233,6 +241,12 @@ select { cursor: pointer; }
                 <div class="numero">3</div>
                 <h2>Enviar</h2>
             </div>
+
+            <label class="campo">
+                <span class="rotulo">Seu nome <span class="obrigatorio">*</span></span>
+                <span class="dica">Fica registrado quem informou, para dar para perguntar depois.</span>
+                <input type="text" id="quem" maxlength="120" autocomplete="off">
+            </label>
 
             <label class="campo" id="campoCodigo">
                 <span class="rotulo">Código de acesso <span class="obrigatorio">*</span></span>
