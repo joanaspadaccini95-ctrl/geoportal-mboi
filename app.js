@@ -45,6 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
             link.href = CONFIG.planilhaUrl;
             link.hidden = false;
         }
+        if (CONFIG.incluirUrl) {
+            const link = document.getElementById('btnIncluir');
+            link.href = CONFIG.incluirUrl;
+            link.hidden = false;
+        }
         if (CONFIG.instrucoesUrl) {
             const link = document.getElementById('btnInstrucoes');
             link.href = CONFIG.instrucoesUrl;

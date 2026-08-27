@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incluir organização — M'Boi Mirim</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap');
+
+:root {
+    --teal: #007C83; --teal-dark: #0d2b2d;
+    --amarelo: #f0a500; --vermelho: #d64545; --verde: #2e9e5b;
+    --texto: #1f2937; --texto-suave: #5b6b7c;
+    --linha: #dde5e9; --fundo: #f4f7f8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--fundo); color: var(--texto); font-size: 17px; line-height: 1.6; }
+
+.topo {
+    background: var(--teal-dark); color: #fff; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    position: sticky; top: 0; z-index: 900; box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+.topo h1 { font-family: 'Outfit', sans-serif; font-size: 1.05rem; font-weight: 700; }
+.voltar {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+    color: #fff; text-decoration: none; padding: 9px 16px; border-radius: 8px;
+    font-size: 0.88rem; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+.voltar:hover { background: rgba(255,255,255,0.22); }
+
+.pagina { max-width: 720px; margin: 0 auto; padding: 28px 20px 90px; }
+
+.bloco {
+    background: #fff; border: 1px solid var(--linha); border-radius: 12px;
+    padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.bloco-titulo { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+.numero {
+    width: 38px; height: 38px; background: var(--teal); color: #fff; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 700; flex-shrink: 0;
+}
+.bloco-titulo h2 { font-family: 'Outfit', sans-serif; font-size: 1.15rem; color: var(--teal-dark); padding-top: 5px; }
+
+label.campo { display: block; margin-bottom: 16px; }
+label.campo > span.rotulo { display: block; font-weight: 600; font-size: 0.92rem; margin-bottom: 6px; }
+label.campo > span.dica { display: block; font-weight: 400; font-size: 0.82rem; color: var(--texto-suave); margin-bottom: 6px; }
+
+input[type="text"], textarea, select {
+    width: 100%; padding: 13px 14px; font-size: 1rem; font-family: inherit;
+    border: 2px solid var(--linha); border-radius: 9px; background: #fff; color: var(--texto);
+}
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--teal); }
+textarea { resize: vertical; min-height: 78px; }
+select { cursor: pointer; }
+
+.obrigatorio { color: var(--vermelho); }
+
+.linha-busca { display: flex; gap: 10px; }
+.linha-busca input { flex: 1; }
+.btn-buscar {
+    background: var(--teal); color: #fff; border: none; border-radius: 9px;
+    padding: 0 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.btn-buscar:hover { background: #00646a; }
+.btn-buscar:disabled { opacity: 0.6; cursor: wait; }
+
+#mapa { height: 380px; border-radius: 10px; border: 2px solid var(--linha); margin-top: 6px; }
+
+.status-mapa {
+    margin-top: 10px; padding: 12px 14px; border-radius: 9px;
+    font-size: 0.9rem; display: flex; gap: 11px; align-items: flex-start;
+}
+.status-mapa i { margin-top: 2px; flex-shrink: 0; }
+.status-mapa.neutro { background: #eef3f5; color: var(--texto-suave); }
+.status-mapa.ok { background: #edf9f1; border: 1px solid #a8ddbd; color: #1c5c34; }
+.status-mapa.ok i { color: var(--verde); }
+.status-mapa.aviso { background: #fff8e6; border: 1px solid #f5d98b; color: #6b4e00; }
+.status-mapa.aviso i { color: var(--amarelo); }
+.status-mapa.erro { background: #fdeeee; border: 1px solid #f0bcbc; color: #7d2020; }
+.status-mapa.erro i { color: var(--vermelho); }
+
+.aviso {
+    border-radius: 9px; padding: 14px 16px; margin: 14px 0;
+    display: flex; gap: 12px; align-items: flex-start; font-size: 0.9rem;
+    background: #fff8e6; border: 1px solid #f5d98b; color: #6b4e00;
+}
+.aviso i { color: var(--amarelo); font-size: 1.1rem; margin-top: 2px; flex-shrink: 0; }
+.aviso strong { display: block; margin-bottom: 3px; }
+
+.separador {
+    display: flex; align-items: center; gap: 14px;
+    margin: 20px 0; color: var(--texto-suave); font-size: 0.85rem; font-weight: 600;
+}
+.separador::before, .separador::after { content: ''; flex: 1; height: 1px; background: var(--linha); }
+
+.btn-enviar {
+    width: 100%; background: var(--teal); color: #fff; border: none; border-radius: 11px;
+    padding: 18px; font-size: 1.08rem; font-weight: 700; font-family: 'Outfit', sans-serif;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 11px;
+}
+.btn-enviar:hover { background: #00646a; }
+.btn-enviar:disabled { background: #9aa8b2; cursor: not-allowed; }
+
+.resultado { margin-top: 16px; padding: 16px; border-radius: 10px; font-size: 0.95rem; display: none; }
+.resultado.sucesso { display: block; background: #edf9f1; border: 1px solid #a8ddbd; color: #1c5c34; }
+.resultado.falha { display: block; background: #fdeeee; border: 1px solid #f0bcbc; color: #7d2020; }
+
+.desativado { background: #fff8e6; border: 1px solid #f5d98b; color: #6b4e00; padding: 20px; border-radius: 11px; }
+
+.pino-form {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--vermelho);
+    border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px;
+}
+.marcador-form { background: none !important; border: none !important; }
+
+@media (max-width: 600px) {
+    body { font-size: 16px; }
+    .pagina { padding: 18px 13px 70px; }
+    .bloco { padding: 18px; }
+    .topo h1 { font-size: 0.92rem; }
+    .voltar span { display: none; }
+    .linha-busca { flex-direction: column; }
+    .btn-buscar { padding: 14px; }
+    #mapa { height: 320px; }
+}
+</style>
+</head>
+<body>
+
+<div class="topo">
+    <h1>Incluir organização</h1>
+    <a class="voltar" href="./index.html"><i class="fa-solid fa-arrow-left"></i> <span>Voltar ao mapa</span></a>
+</div>
+
+<div class="pagina">
+
+    <div id="avisoDesativado" class="desativado" style="display:none">
+        <strong>A inclusão pelo site ainda não foi ativada.</strong>
+        Por enquanto, use a planilha. Veja o passo a passo em
+        <a href="./instrucoes.html">instruções de preenchimento</a>.
+    </div>
+
+    <form id="formulario">
+
+        <!-- ============ 1. IDENTIFICAÇÃO ============ -->
+        <div class="bloco">
+            <div class="bloco-titulo">
+                <div class="numero">1</div>
+                <h2>Quem é a organização</h2>
+            </div>
+
+            <label class="campo">
+                <span class="rotulo">Nome da organização <span class="obrigatorio">*</span></span>
+                <input type="text" id="nome" maxlength="200" required autocomplete="off">
+            </label>
+
+            <label class="campo">
+                <span class="rotulo">Serviços oferecidos</span>
+                <span class="dica">O que ela faz. Separe por vírgula.</span>
+                <textarea id="servicos" maxlength="500"
+                          placeholder="Curso de informática, cesta básica, apoio jurídico"></textarea>
+            </label>
+
+            <label class="campo">
+                <span class="rotulo">Categoria</span>
+                <select id="categoria"><option value="">Escolha…</option></select>
+            </label>
+
+            <label class="campo">
+                <span class="rotulo">Subprefeitura</span>
+                <select id="subprefeitura"><option value="">Escolha…</option></select>
+            </label>
+
+            <label class="campo">
+                <span class="rotulo">Contato</span>
+                <span class="dica">Telefone, WhatsApp ou e-mail.</span>
+                <input type="text" id="contato" maxlength="200" autocomplete="off">
+            </label>
+        </div>
+
+        <!-- ============ 2. LOCALIZAÇÃO ============ -->
+        <div class="bloco">
+            <div class="bloco-titulo">
+                <div class="numero">2</div>
+                <h2>Onde ela fica</h2>
+            </div>
+
+            <label class="campo">
+                <span class="rotulo">Cole aqui o link do Google Maps</span>
+                <span class="dica">No Google Maps: ache o lugar, toque em <strong>Compartilhar</strong> e depois em <strong>Copiar link</strong>. Cole abaixo.</span>
+                <div class="linha-busca">
+                    <input type="text" id="entradaLocal" autocomplete="off"
+                           placeholder="https://maps.app.goo.gl/…">
+                    <button type="button" class="btn-buscar" id="btnLocalizar">
+                        <i class="fa-solid fa-location-crosshairs"></i> Achar
+                    </button>
+                </div>
+            </label>
+
+            <div class="aviso">
+                <i class="fa-solid fa-lightbulb"></i>
+                <div>
+                    <strong>Não tem o link?</strong>
+                    Escreva o endereço nesse mesmo campo e clique em Achar. Ou simplesmente arraste o alfinete vermelho no mapa até o telhado do prédio.
+                </div>
+            </div>
+
+            <div class="separador">CONFIRA NO MAPA</div>
+
+            <div id="mapa"></div>
+
+            <div class="status-mapa neutro" id="statusMapa">
+                <i class="fa-solid fa-hand-pointer"></i>
+                <div>Arraste o alfinete vermelho até o local exato da organização. Você pode aproximar com dois dedos ou com a rolagem do mouse.</div>
+            </div>
+
+            <label class="campo" style="margin-top:16px">
+                <span class="rotulo">Endereço</span>
+                <span class="dica">Preenchido sozinho quando você move o alfinete. Corrija se precisar.</span>
+                <input type="text" id="endereco" maxlength="300" autocomplete="off">
+            </label>
+        </div>
+
+        <!-- ============ 3. ENVIO ============ -->
+        <div class="bloco">
+            <div class="bloco-titulo">
+                <div class="numero">3</div>
+                <h2>Enviar</h2>
+            </div>
+
+            <label class="campo" id="campoCodigo">
+                <span class="rotulo">Código de acesso <span class="obrigatorio">*</span></span>
+                <span class="dica">Peça à pessoa responsável pelo mapa.</span>
+                <input type="text" id="codigo" autocomplete="off">
+            </label>
+
+            <button type="submit" class="btn-enviar" id="btnEnviar">
+                <i class="fa-solid fa-paper-plane"></i> Cadastrar organização
+            </button>
+
+            <div class="resultado" id="resultado"></div>
+        </div>
+
+    </form>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="./config.js"></script>
+<script src="./incluir.js"></script>
+
+</body>
+</html>

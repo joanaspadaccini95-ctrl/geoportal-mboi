@@ -904,6 +904,20 @@ body, html {
     flex-shrink: 0;
 }
 
+/* Botão de inclusão no cabeçalho */
+.btn-header.btn-incluir {
+    background: linear-gradient(135deg, #00a86b, #00d1b2);
+    border: none;
+    color: #062a22;
+    font-weight: 700;
+}
+
+.btn-header.btn-incluir:hover {
+    box-shadow: 0 0 15px rgba(0, 209, 178, 0.45);
+    transform: translateY(-1px);
+    color: #062a22;
+}
+
 /* Botão de ajuda no cabeçalho */
 .btn-header.btn-ajuda {
     border-color: rgba(255, 183, 3, 0.45);

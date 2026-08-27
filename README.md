@@ -13,8 +13,15 @@ Mapa público das organizações parceiras da região do M'Boi Mirim (Zona Sul d
 ├── style.css           Design system (glassmorphism / teal)
 ├── config.js           ⚙️ ÚNICO arquivo que você precisa editar no dia a dia
 ├── app.js              Lógica do mapa, busca, lista e exportação
+├── incluir.html        Formulário de inclusão com alfinete arrastável
+├── incluir.js          Lógica do formulário
 ├── api/
-│   └── dados.js        Serverless Function: lê a planilha → geocodifica → devolve GeoJSON
+│   ├── _geo.js         Módulo interno: links do Maps, geocodificação, reverso
+│   ├── dados.js        Lê a planilha → localiza → devolve GeoJSON
+│   ├── resolver.js     Apoio ao formulário (link/endereço → ponto, ponto → endereço)
+│   └── incluir.js      Recebe o formulário → valida → manda gravar
+├── apps-script/
+│   └── Codigo.gs       Script que mora DENTRO da planilha e faz a gravação
 ├── package.json
 └── vercel.json
 ```
@@ -159,6 +166,57 @@ Só na planilha. O filtro se monta sozinho, sem configuração.
 O `instrucoes.html` é a página ligada ao botão **Como incluir** do cabeçalho, escrita para pessoas com pouca familiaridade com computador. Cobre: abrir a planilha, achar a linha vazia, copiar o endereço completo do Google Maps (com ênfase no CEP), usar as listas suspensas e, como passo opcional, pegar coordenadas pelo clique com o botão direito no Google Maps.
 
 As ilustrações são desenhos vetoriais embutidos no próprio arquivo — não há imagens externas para se perder. Para trocá-las por capturas de tela reais, coloque os arquivos numa pasta `img/` e substitua cada bloco `<svg>...</svg>` por `<img src="./img/nome.png" alt="descrição">`.
+
+---
+
+## 4d. Inclusão pelo próprio site
+
+O formulário em `incluir.html` deixa a pessoa cadastrar uma organização sem abrir a planilha. **O alfinete arrastável é a fonte da verdade**: link do Maps, endereço digitado e arraste manual são só três formas de posicioná-lo, e o que vai para a planilha é sempre a coordenada final. Isso elimina a geocodificação por adivinhação.
+
+### Como o dado chega à planilha
+
+```
+navegador → /api/incluir (valida) → Apps Script (grava) → planilha
+```
+
+O navegador nunca fala com a planilha. A URL do Apps Script e o código de acesso ficam só em variáveis de ambiente na Vercel, fora do alcance de quem abrir o código-fonte da página.
+
+### Instalação (uma vez só)
+
+1. Abra `apps-script/Codigo.gs` e siga o passo a passo comentado no topo do arquivo
+2. Ao final você terá uma URL terminada em `/exec`
+3. Na Vercel, em *Settings → Environment Variables*, crie:
+
+| Variável | Valor |
+|---|---|
+| `APPS_SCRIPT_URL` | a URL `/exec` copiada |
+| `CODIGO_ACESSO` | a senha combinada com a equipe |
+
+4. Aba *Deployments* → botão "..." do último → **Redeploy**
+
+Enquanto `APPS_SCRIPT_URL` não existir, o formulário se desativa sozinho e mostra um aviso apontando para a planilha. Nada quebra.
+
+### Moderação
+
+No `Codigo.gs`, mudando `MODERACAO` para `true`, os envios do site passam a cair numa aba `Pendentes` (criada sozinha, com o mesmo cabeçalho) em vez da aba principal. Você revisa e move as linhas aprovadas.
+
+### Sobre a segurança
+
+O Apps Script precisa ser publicado como "Qualquer pessoa" para o site conseguir gravar — a proteção real é o `CODIGO_ACESSO`. Isso basta contra robôs e curiosos, mas não é uma senha individual: quem tem o código pode incluir. Para uma base pública de organizações parceiras, é uma troca razoável. Se um dia precisar de controle por pessoa, o caminho seria Google Forms com login exigido, ou autenticação de verdade no portal.
+
+---
+
+## 4e. Links do Google Maps na coluna Endereço
+
+A coluna `Endereco` aceita três conteúdos diferentes, e a API reconhece qual é qual:
+
+| O que a pessoa cola | Como é resolvido | Precisão |
+|---|---|---|
+| `https://maps.app.goo.gl/…` | Expande o link e lê as coordenadas de dentro | Exata |
+| `-23.685918, -46.792683` | Usa direto | Exata |
+| `R. Feitiço da Vila, 399 - …, 05879-000` | Nominatim → ViaCEP → CEP | Aproximada |
+
+O link é o melhor caminho no celular: no Google Maps é **Compartilhar → Copiar link**, um toque. E é mais preciso que o endereço em texto, porque não passa por adivinhação nenhuma.
 
 ---
 

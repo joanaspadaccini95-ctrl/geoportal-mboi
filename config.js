@@ -24,7 +24,7 @@
 
 const CONFIG = {
     title: "Organizações Parceiras - M'Boi Mirim",
-    subtitle: "Mapa colaborativo de organizações e serviços",
+    subtitle: "Mapa colaborativo de organizações e serviços — Zona Sul de São Paulo",
 
     // Endpoint da Serverless Function (Vercel) que lê a planilha e devolve GeoJSON
     apiPath: "/api/dados",
@@ -43,8 +43,16 @@ const CONFIG = {
        CATEGORIAS — cor e ícone de cada uma
        ===================================================================== */
     categorias: {
-        "Programas Sociais": { cor: "#c5a54d", icone: "fa-solid fa-hand-holding-heart" },
-        "Equipamento Público": { cor: "#ca8b69", icone: "fa-solid fa-landmark"}
+        "Saúde":              { cor: "#e74c3c", icone: "fa-heart-pulse" },
+        "Educação":           { cor: "#3498db", icone: "fa-graduation-cap" },
+        "Assistência Social": { cor: "#e67e22", icone: "fa-hands-holding-child" },
+        "Cultura":            { cor: "#9b59b6", icone: "fa-masks-theater" },
+        "Esporte e Lazer":    { cor: "#16a085", icone: "fa-futbol" },
+        "Geração de Renda":   { cor: "#f1c40f", icone: "fa-briefcase" },
+        "Meio Ambiente":      { cor: "#27ae60", icone: "fa-leaf" },
+        "Direitos Humanos":   { cor: "#2980b9", icone: "fa-scale-balanced" },
+        "Religiosa":          { cor: "#8e6e53", icone: "fa-place-of-worship" },
+        "Outros":             { cor: "#7f8c8d", icone: "fa-circle-info" }
     },
 
     // Cores sorteadas automaticamente para categorias ainda não configuradas acima
@@ -59,6 +67,20 @@ const CONFIG = {
 
     // Rótulo usado quando a célula de Categoria/Subprefeitura está vazia
     semValor: "Não informado",
+
+    /* =====================================================================
+       SUBPREFEITURAS — usadas apenas para montar a lista do formulário
+       de inclusão. O FILTRO do mapa não depende disto: ele é montado com
+       o que existir na planilha. Ajuste conforme a validação de dados.
+       ===================================================================== */
+    subprefeituras: [
+        "M'Boi Mirim",
+        "Campo Limpo",
+        "Capela do Socorro",
+        "Cidade Ademar",
+        "Parelheiros",
+        "Santo Amaro"
+    ],
 
     // Enquadramento inicial (vale só até a planilha carregar)
     mapa: {
@@ -99,5 +121,8 @@ const CONFIG = {
     planilhaUrl: "https://docs.google.com/spreadsheets/d/1jASW5jiS2ji4yl-YkUxMM0XSj9UtF6UwBF0cTN_rHUU/edit?usp=sharing",
 
     // Página de instruções (botão "Como incluir" no cabeçalho)
-    instrucoesUrl: "./instrucoes.html"
+    instrucoesUrl: "./instrucoes.html",
+
+    // Formulário de inclusão pelo próprio site
+    incluirUrl: "./incluir.html"
 };

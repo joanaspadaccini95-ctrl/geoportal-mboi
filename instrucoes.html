@@ -166,6 +166,15 @@ body {
 .aviso.ok { background: #edf9f1; border: 1px solid #a8ddbd; color: #1c5c34; }
 .aviso.ok i { color: var(--verde); }
 
+.separador-caminhos {
+    display: flex; align-items: center; gap: 16px;
+    margin: 34px 0 26px; color: var(--texto-suave);
+    font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.separador-caminhos::before, .separador-caminhos::after {
+    content: ''; flex: 1; height: 2px; background: var(--linha);
+}
+
 /* ---------- Diversos ---------- */
 .exemplo {
     background: #f0f4f6;
@@ -245,8 +254,34 @@ kbd {
 <div class="pagina">
 
     <div class="intro">
-        <h2>Antes de começar</h2>
-        <p>Você vai preencher uma linha de uma planilha. Não precisa saber nada de computador além de digitar e copiar. Leva uns 3 minutos. Depois que você preencher, a organização aparece no mapa sozinha — <strong>você não precisa avisar ninguém</strong>.</p>
+        <h2>Existem dois caminhos</h2>
+        <p>Escolha o que for mais fácil para você. Os dois dão no mesmo lugar.</p>
+    </div>
+
+    <div class="passo" style="border-color:#2e9e5b; border-width:2px">
+        <div class="passo-titulo">
+            <div class="numero" style="background:#2e9e5b"><i class="fa-solid fa-star" style="font-size:1rem"></i></div>
+            <h3>Caminho fácil: pelo próprio site</h3>
+        </div>
+        <p>Você preenche um formulário e <strong>arrasta um alfinete no mapa</strong> até o prédio da organização. Sem planilha, sem copiar e colar.</p>
+        <p><strong>Funciona bem no celular</strong> e é o jeito mais seguro de o ponto cair no lugar certo.</p>
+        <a class="botao-planilha" id="linkIncluir" href="./incluir.html" style="background:#2e9e5b">
+            <i class="fa-solid fa-circle-plus"></i> Cadastrar pelo site
+        </a>
+        <div class="aviso atencao">
+            <i class="fa-solid fa-key"></i>
+            <div>
+                <strong>Você vai precisar de um código de acesso</strong>
+                Peça à pessoa responsável pelo mapa. É o mesmo código para todo mundo da equipe.
+            </div>
+        </div>
+    </div>
+
+    <div class="separador-caminhos">ou, se preferir a planilha</div>
+
+    <div class="intro">
+        <h2>Caminho pela planilha</h2>
+        <p>Você preenche uma linha de uma planilha. Leva uns 3 minutos. Depois que você preencher, a organização aparece no mapa sozinha — <strong>você não precisa avisar ninguém</strong>.</p>
     </div>
 
     <!-- PASSO 1 -->
@@ -418,6 +453,16 @@ kbd {
                 O computador não entende referências. Ele precisa do endereço formal, com número e CEP.
             </div>
         </div>
+
+        <div class="aviso ok">
+            <i class="fa-solid fa-mobile-screen"></i>
+            <div>
+                <strong>No celular tem um jeito mais fácil: cole o LINK</strong>
+                No Google Maps, toque no lugar, depois em <strong>Compartilhar</strong> e em <strong>Copiar link</strong>.
+                Cole esse link na coluna Endereço, no lugar do endereço escrito. Sai algo como
+                <em>https://maps.app.goo.gl/xY7abc</em> — e funciona melhor ainda, porque marca o ponto exato.
+            </div>
+        </div>
     </div>
 
     <!-- PASSO 5 -->
@@ -563,6 +608,10 @@ kbd {
             link.href = CONFIG.planilhaUrl;
         } else {
             link.style.display = 'none';
+        }
+        var incluir = document.getElementById('linkIncluir');
+        if (incluir && typeof CONFIG !== 'undefined' && CONFIG.incluirUrl) {
+            incluir.href = CONFIG.incluirUrl;
         }
     })();
 </script>

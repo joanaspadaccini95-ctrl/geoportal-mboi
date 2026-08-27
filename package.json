@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "description": "Mapa colaborativo das organizacoes parceiras da regiao do M'Boi Mirim - Sao Paulo",
   "engines": {
     "node": ">=20"
   }
