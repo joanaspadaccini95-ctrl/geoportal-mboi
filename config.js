@@ -24,7 +24,7 @@
 
 const CONFIG = {
     title: "Organizações Parceiras - M'Boi Mirim",
-    subtitle: "Mapa colaborativo de organizações e serviços — Zona Sul de São Paulo",
+    subtitle: "Mapa colaborativo de organizações e serviços",
 
     // Endpoint da Serverless Function (Vercel) que lê a planilha e devolve GeoJSON
     apiPath: "/api/dados",
@@ -43,16 +43,9 @@ const CONFIG = {
        CATEGORIAS — cor e ícone de cada uma
        ===================================================================== */
     categorias: {
-        "Saúde":              { cor: "#e74c3c", icone: "fa-heart-pulse" },
-        "Educação":           { cor: "#3498db", icone: "fa-graduation-cap" },
-        "Assistência Social": { cor: "#e67e22", icone: "fa-hands-holding-child" },
-        "Cultura":            { cor: "#9b59b6", icone: "fa-masks-theater" },
-        "Esporte e Lazer":    { cor: "#16a085", icone: "fa-futbol" },
-        "Geração de Renda":   { cor: "#f1c40f", icone: "fa-briefcase" },
-        "Meio Ambiente":      { cor: "#27ae60", icone: "fa-leaf" },
-        "Direitos Humanos":   { cor: "#2980b9", icone: "fa-scale-balanced" },
-        "Religiosa":          { cor: "#8e6e53", icone: "fa-place-of-worship" },
-        "Outros":             { cor: "#7f8c8d", icone: "fa-circle-info" }
+        "Associações Beneficentes": { cor: "#3498db", icone: "fa-solid fa-hand-holding-heart" },
+        "Equipamentos Públicos": { cor: "#e67e22", icone: "fa-solid fa-building-columns" },
+        "Organizações Sociais": { cor: "#f1c40f", icone: "fa-solid fa-handshake" },
     },
 
     // Cores sorteadas automaticamente para categorias ainda não configuradas acima
@@ -75,11 +68,9 @@ const CONFIG = {
        ===================================================================== */
     subprefeituras: [
         "M'Boi Mirim",
-        "Campo Limpo",
         "Capela do Socorro",
         "Cidade Ademar",
         "Parelheiros",
-        "Santo Amaro"
     ],
 
     // Enquadramento inicial (vale só até a planilha carregar)
