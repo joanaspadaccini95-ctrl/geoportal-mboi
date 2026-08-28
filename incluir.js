@@ -13,7 +13,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     const el = (id) => document.getElementById(id);
-    const CHAVE_CODIGO = 'mboi_codigo';
     const CHAVE_QUEM = 'mboi_quem';
 
     const state = {
@@ -231,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 el('formulario').style.display = 'none';
                 return false;
             }
-            if (!d.exigeCodigo) el('campoCodigo').style.display = 'none';
             return true;
         } catch { return true; }
     }
@@ -247,11 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const quem = el('quem').value.trim();
-        if (quem.length < 2) {
-            mostrarResultado(false, 'Escreva seu nome, para ficar registrado quem informou.');
-            el('quem').focus();
-            return;
-        }
         if (!state.posicionado) {
             mostrarResultado(false, 'Marque o local no mapa: cole o link do Google Maps ou arraste o alfinete vermelho.');
             el('mapa').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -268,7 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
             contato: el('contato').value.trim(),
             categoria: el('categoria').value,
             subprefeitura: el('subprefeitura').value,
-            codigo: el('codigo').value.trim(),
             quem,
             lat: p.lat,
             lon: p.lng
@@ -289,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const d = await resp.json();
 
             if (d.ok) {
-                lembrar(dados.codigo, quem);
+                lembrar(quem);
                 if (state.idEdicao) {
                     mostrarResultado(true,
                         `<strong>Alterações salvas.</strong><br>` +
@@ -300,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         `<a href="./index.html" style="color:#1c5c34;font-weight:700">Ver no mapa</a> ou ` +
                         `<a href="./incluir.html" style="color:#1c5c34;font-weight:700">cadastrar outra</a>.`);
                     el('formulario').querySelectorAll('input, textarea, select').forEach((c) => {
-                        if (c.id !== 'codigo' && c.id !== 'quem') c.value = '';
+                        if (c.id !== 'quem') c.value = '';
                     });
                     state.posicionado = false;
                 }
@@ -320,18 +312,14 @@ document.addEventListener('DOMContentLoaded', () => {
        6. AUXILIARES
        ====================================================================== */
 
-    function lembrar(codigo, quem) {
-        try {
-            if (codigo) localStorage.setItem(CHAVE_CODIGO, codigo);
-            if (quem) localStorage.setItem(CHAVE_QUEM, quem);
-        } catch { /* navegador pode bloquear */ }
+    function lembrar(quem) {
+        try { if (quem) localStorage.setItem(CHAVE_QUEM, quem); }
+        catch { /* navegador pode bloquear */ }
     }
 
     function recuperarLembrados() {
         try {
-            const c = localStorage.getItem(CHAVE_CODIGO);
             const q = localStorage.getItem(CHAVE_QUEM);
-            if (c) el('codigo').value = c;
             if (q) el('quem').value = q;
         } catch { /* segue vazio */ }
     }

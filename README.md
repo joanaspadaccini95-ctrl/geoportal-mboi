@@ -74,7 +74,7 @@ Na Vercel, em *Settings → Environment Variables*:
 | Variável | Valor |
 |---|---|
 | `APPS_SCRIPT_URL` | a URL `/exec` |
-| `CODIGO_ACESSO` | a senha combinada com a equipe |
+| `CODIGO_ACESSO` | a mesma senha que está no `Codigo.gs` — protege a URL do Apps Script contra acesso direto; a equipe nunca a digita |
 
 Depois: *Deployments* → "..." do último → **Redeploy**. Variáveis novas não valem para deploys já publicados.
 
@@ -88,14 +88,18 @@ Enquanto `APPS_SCRIPT_URL` não existir, o site cai no modo antigo (CSV público
 
 ## 4. Como a equipe usa
 
-Tudo pelo site, com o código de acesso. Nada de planilha.
+Tudo pelo site, sem senha nem cadastro. Nada de planilha.
 
 - **Incluir** — botão verde no cabeçalho. Nome, serviços, categoria, contato e a posição.
 - **Corrigir** — clique no ponto → botão *Corrigir* no balão. Abre o mesmo formulário preenchido, e o registro continua sendo o mesmo (sem duplicata).
 - **Continua aberta** — um clique. Registra a data, e o balão passa a mostrar "informação confirmada em…".
-- **Fechou** — some do mapa, mas **nada é apagado**: vira `Situação = Encerrada`, com quem informou, quando e o motivo. O checkbox *Mostrar encerradas*, no painel esquerdo, traz de volta, e daí o botão vira *Voltou a funcionar*.
+- **Fechou** — vira `Situação = Encerrada`. **Nada é apagado**: o ponto continua no mapa, esmaecido e com o nome riscado na lista, e o botão passa a ser *Voltou a funcionar*. O filtro **Situação**, no painel, esconde ou mostra as encerradas.
 
-O nome de quem informou e o código ficam guardados no navegador depois do primeiro uso, então confirmar funcionamento vira mesmo um clique.
+O nome de quem informou fica guardado no navegador depois do primeiro uso.
+
+### Sobre não haver senha
+
+Qualquer visitante pode incluir, corrigir e mudar a situação. A URL do Apps Script continua secreta (vive numa variável de ambiente), então ninguém escreve na planilha por fora — mas quem chega ao site pode escrever por dentro. Se um dia isso virar problema, o caminho é reativar a checagem de código em `api/registro.js`, onde o trecho removido está comentado.
 
 ### Três formas de marcar a posição
 

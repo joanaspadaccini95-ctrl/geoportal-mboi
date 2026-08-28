@@ -22,17 +22,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         categorias: [],          // [{nome, total}]
         subprefeituras: [],      // [{nome, total}]
+        situacoes: [],           // [{nome, total}]
         estiloCategoria: new Map(), // nome -> {cor, icone}
 
-        filtroCategoria: new Set(),   // vazio = tudo marcado ainda não inicializado
+        filtroCategoria: new Set(),
         filtroSubpref: new Set(),
+        filtroSituacao: new Set(),
 
-        mostrarEncerradas: false,
         selecionado: null,
         carregando: false
     };
 
-    const CHAVE_CODIGO = 'mboi_codigo';
     const CHAVE_QUEM = 'mboi_quem';
 
     /* ======================================================================
@@ -152,6 +152,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    /**
+     * Aceita o ícone escrito das duas formas no config.js:
+     *   "fa-handshake"            (só o nome)
+     *   "fa-solid fa-handshake"   (classe completa)
+     */
+    function normalizarIcone(icone) {
+        const txt = String(icone || CONFIG.iconePadrao || 'fa-location-dot').trim();
+        return /\bfa-(solid|regular|brands|light|thin|duotone)\b/.test(txt) ? txt : `fa-solid ${txt}`;
+    }
+
+    function ehEncerrada(situacao) {
+        return String(situacao || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase().trim() === 'encerrada';
+    }
+
     function estiloDe(categoria) {
         return state.estiloCategoria.get(categoria)
             || { cor: '#95a5a6', icone: CONFIG.iconePadrao };
@@ -184,22 +200,16 @@ document.addEventListener('DOMContentLoaded', () => {
             state.colunaEndereco = meta.colunaEndereco || CONFIG.colunas.endereco;
             state.categorias = meta.categorias || [];
             state.subprefeituras = meta.subprefeituras || [];
+            state.situacoes = meta.situacoes || [];
 
             montarEstilosCategoria();
 
             // Todos os filtros começam marcados
             state.filtroCategoria = new Set(state.categorias.map((c) => c.nome));
             state.filtroSubpref = new Set(state.subprefeituras.map((s) => s.nome));
-
-            const rotulo = document.getElementById('rotuloEncerradas');
-            if (rotulo) {
-                rotulo.textContent = meta.encerradas > 0
-                    ? `Mostrar encerradas (${meta.encerradas})`
-                    : 'Mostrar encerradas';
-            }
+            state.filtroSituacao = new Set(state.situacoes.map((s) => s.nome));
 
             renderizarFiltros();
-            renderizarLegenda();
             renderizarPontos();
             aplicarFiltros();
             ajustarEnquadramento();
@@ -238,15 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
        ====================================================================== */
 
     function criarIcone(categoria, destaque = false, encerrada = false) {
-        const base = estiloDe(categoria);
-        const cor = encerrada ? '#94a3b8' : base.cor;
-        const icone = base.icone;
+        const { cor, icone } = estiloDe(categoria);
         const tamanho = destaque ? CONFIG.marcador.tamanhoDestaque : CONFIG.marcador.tamanho;
 
         return L.divIcon({
             className: 'marcador-cat',
-            html: `<div class="pino ${destaque ? 'destaque' : ''}" style="--cor:${cor}; --tam:${tamanho}px">
-                     <i class="fa-solid ${icone}"></i>
+            html: `<div class="pino ${destaque ? 'destaque' : ''} ${encerrada ? 'encerrada' : ''}" style="--cor:${cor}; --tam:${tamanho}px">
+                     <i class="${normalizarIcone(icone)}"></i>
                    </div>`,
             iconSize: [tamanho, tamanho],
             iconAnchor: [tamanho / 2, tamanho / 2],
@@ -339,7 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="popup-dossier ${encerrada ? 'encerrada' : ''}">
                 <div class="popup-header">
                     <h4>
-                        <span class="popup-icone" style="background:${cor}"><i class="fa-solid ${icone}"></i></span>
+                        <span class="popup-icone" style="background:${cor}"><i class="${normalizarIcone(icone)}"></i></span>
                         ${escapar(nome)}
                     </h4>
                     ${selo}
@@ -399,11 +407,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderizarFiltros() {
         montarGrupoFiltro({
+            containerId: 'filtroSituacaoLista',
+            grupoId: 'grupoSituacao',
+            itens: state.situacoes,
+            selecionados: state.filtroSituacao,
+            tipoMarca: 'situacao'
+        });
+
+        montarGrupoFiltro({
             containerId: 'filtroCategoriaLista',
             grupoId: 'grupoCategoria',
             itens: state.categorias,
             selecionados: state.filtroCategoria,
-            comCor: true
+            tipoMarca: 'categoria'
         });
 
         montarGrupoFiltro({
@@ -411,11 +427,11 @@ document.addEventListener('DOMContentLoaded', () => {
             grupoId: 'grupoSubpref',
             itens: state.subprefeituras,
             selecionados: state.filtroSubpref,
-            comCor: false
+            tipoMarca: 'simples'
         });
     }
 
-    function montarGrupoFiltro({ containerId, grupoId, itens, selecionados, comCor }) {
+    function montarGrupoFiltro({ containerId, grupoId, itens, selecionados, tipoMarca }) {
         const container = document.getElementById(containerId);
         const grupo = document.getElementById(grupoId);
         container.innerHTML = '';
@@ -431,12 +447,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const linha = document.createElement('label');
             linha.className = 'filtro-item';
 
-            const marca = comCor
-                ? (() => {
-                    const { cor, icone } = estiloDe(item.nome);
-                    return `<span class="filtro-icone" style="background:${cor}"><i class="fa-solid ${icone}"></i></span>`;
-                })()
-                : '<span class="filtro-bullet"></span>';
+            let marca;
+            if (tipoMarca === 'categoria') {
+                const { cor, icone } = estiloDe(item.nome);
+                marca = `<span class="filtro-icone" style="background:${cor}"><i class="${normalizarIcone(icone)}"></i></span>`;
+            } else if (tipoMarca === 'situacao') {
+                const encerrada = ehEncerrada(item.nome);
+                marca = `<span class="filtro-icone ${encerrada ? 'apagada' : ''}" style="background:${encerrada ? '#94a3b8' : '#00a86b'}">
+                            <i class="fa-solid ${encerrada ? 'fa-circle-xmark' : 'fa-circle-check'}"></i>
+                         </span>`;
+            } else {
+                marca = '<span class="filtro-bullet"></span>';
+            }
 
             linha.innerHTML = `
                 <input type="checkbox" checked data-valor="${escapar(item.nome)}">
@@ -455,9 +477,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function alternarTodos(qual, marcar) {
-        const config = qual === 'categoria'
-            ? { itens: state.categorias, alvo: state.filtroCategoria, container: 'filtroCategoriaLista' }
-            : { itens: state.subprefeituras, alvo: state.filtroSubpref, container: 'filtroSubprefLista' };
+        const mapa = {
+            categoria: { itens: state.categorias, alvo: state.filtroCategoria, container: 'filtroCategoriaLista' },
+            subpref: { itens: state.subprefeituras, alvo: state.filtroSubpref, container: 'filtroSubprefLista' },
+            situacao: { itens: state.situacoes, alvo: state.filtroSituacao, container: 'filtroSituacaoLista' }
+        };
+        const config = mapa[qual];
+        if (!config) return;
 
         config.alvo.clear();
         if (marcar) config.itens.forEach((i) => config.alvo.add(i.nome));
@@ -484,8 +510,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Filtro de subprefeitura
             if (state.subprefeituras.length > 0 && !state.filtroSubpref.has(p._subprefeitura || CONFIG.semValor)) return false;
 
-            // Organizações encerradas ficam ocultas por padrão
-            if (p._encerrada && !state.mostrarEncerradas) return false;
+            // Filtro de situação
+            if (state.situacoes.length > 0 && !state.filtroSituacao.has(p._situacao || 'Em funcionamento')) return false;
 
             return true;
         });
@@ -499,7 +525,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         renderizarLista();
-        renderizarLegenda();
         atualizarContadores();
 
         // Com um único resultado de busca, aproxima automaticamente
@@ -514,42 +539,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('countPill').textContent = state.visiveis.length;
         document.getElementById('listCount').textContent =
             comGeo === state.visiveis.length ? `${comGeo}` : `${comGeo} de ${state.visiveis.length} no mapa`;
-    }
-
-    /* ======================================================================
-       6. LEGENDA (canto inferior direito)
-       ====================================================================== */
-
-    function renderizarLegenda() {
-        const box = document.getElementById('legendaLista');
-        const caixa = document.getElementById('legendaBox');
-        box.innerHTML = '';
-
-        if (state.categorias.length === 0) {
-            caixa.hidden = true;
-            return;
-        }
-        caixa.hidden = false;
-
-        // Conta quantas estão visíveis agora em cada categoria
-        const visiveisPorCat = new Map();
-        state.visiveis.forEach((f) => {
-            const c = f.properties._categoria || CONFIG.semValor;
-            visiveisPorCat.set(c, (visiveisPorCat.get(c) || 0) + 1);
-        });
-
-        state.categorias.forEach((cat) => {
-            const { cor, icone } = estiloDe(cat.nome);
-            const qtd = visiveisPorCat.get(cat.nome) || 0;
-
-            const item = document.createElement('div');
-            item.className = `legenda-item ${qtd === 0 ? 'apagado' : ''}`;
-            item.innerHTML = `
-                <span class="legenda-icone" style="background:${cor}"><i class="fa-solid ${icone}"></i></span>
-                <span class="legenda-nome">${escapar(cat.nome)}</span>
-                <span class="legenda-total">${qtd}</span>`;
-            box.appendChild(item);
-        });
     }
 
     /* ======================================================================
@@ -576,12 +565,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const { cor, icone } = estiloDe(categoria);
 
             const item = document.createElement('div');
-            item.className = `org-item ${temGeo ? '' : 'sem-geo'}`;
+            item.className = `org-item ${temGeo ? '' : 'sem-geo'} ${f.properties._encerrada ? 'encerrada' : ''}`;
             item.dataset.idx = i;
 
             const endereco = f.properties[state.colunaEndereco] || '';
             item.innerHTML = `
-                <span class="org-icone" style="background:${temGeo ? cor : '#64748b'}"><i class="fa-solid ${icone}"></i></span>
+                <span class="org-icone" style="background:${temGeo ? cor : '#64748b'}"><i class="${normalizarIcone(icone)}"></i></span>
                 <span class="org-item-text">
                     <strong>${escapar(f.properties[state.colunaNome] || 'Sem nome')}</strong>
                     <small>${temGeo ? escapar(endereco) : 'Endereço não localizado no mapa'}</small>
@@ -679,11 +668,9 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.textContent = textos.botao;
         btn.className = `modal-btn ${textos.classe}`;
 
-        // Preenche nome e código já usados antes
+        // Preenche o nome já usado antes
         try {
-            const c = localStorage.getItem(CHAVE_CODIGO);
             const q = localStorage.getItem(CHAVE_QUEM);
-            if (c) document.getElementById('modalCodigo').value = c;
             if (q) document.getElementById('modalQuem').value = q;
         } catch { /* navegador pode bloquear */ }
 
@@ -700,10 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!acaoPendente) return;
 
         const quem = document.getElementById('modalQuem').value.trim();
-        const codigo = document.getElementById('modalCodigo').value.trim();
         const erro = document.getElementById('modalErro');
-
-        if (quem.length < 2) { erro.textContent = 'Escreva seu nome.'; return; }
 
         const btn = document.getElementById('modalConfirmar');
         const rotulo = btn.textContent;
@@ -720,17 +704,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     id: acaoPendente.id,
                     situacao: acaoPendente.acao === 'encerrar' ? 'Encerrada' : 'Em funcionamento',
                     observacao: document.getElementById('modalObs').value.trim(),
-                    quem, codigo
+                    quem
                 })
             });
             const d = await resp.json();
 
             if (!d.ok) { erro.textContent = d.erro || 'Não foi possível registrar.'; return; }
 
-            try {
-                if (codigo) localStorage.setItem(CHAVE_CODIGO, codigo);
-                if (quem) localStorage.setItem(CHAVE_QUEM, quem);
-            } catch { /* segue */ }
+            try { if (quem) localStorage.setItem(CHAVE_QUEM, quem); }
+            catch { /* segue */ }
 
             fecharModal();
             state.map.closePopup();
@@ -791,8 +773,8 @@ document.addEventListener('DOMContentLoaded', () => {
             sidebar.classList.toggle('collapsed');
             const icone = e.currentTarget.querySelector('i');
             icone.className = sidebar.classList.contains('collapsed')
-                ? 'fa-solid fa-chevron-right'
-                : 'fa-solid fa-chevron-left';
+                ? 'fa-solid fa-chevron-left'
+                : 'fa-solid fa-chevron-right';
         });
 
         let debounce;
@@ -814,10 +796,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        document.getElementById('legendaToggle').addEventListener('click', () => {
-            document.getElementById('legendaBox').classList.toggle('recolhida');
-        });
-
         // Botões dentro do balão (o conteúdo é recriado a cada abertura)
         document.addEventListener('click', (e) => {
             const btn = e.target.closest('.pop-btn[data-acao]');
@@ -833,11 +811,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') fecharModal();
-        });
-
-        document.getElementById('chkEncerradas').addEventListener('change', (e) => {
-            state.mostrarEncerradas = e.target.checked;
-            aplicarFiltros();
         });
 
         document.getElementById('btnRefresh').addEventListener('click', () => carregarDados(true));

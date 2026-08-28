@@ -104,12 +104,15 @@ function acaoListar(aba) {
 
   var registros = [];
   if (ultimaLinha > 1) {
-    var valores = aba.getRange(2, 1, ultimaLinha - 1, cabecalhos.length).getDisplayValues();
+    // getValues (não getDisplayValues): o texto exibido pode vir ARREDONDADO
+    // conforme a largura da coluna, e arredondar a 4ª casa decimal já desloca
+    // o ponto alguns metros no mapa.
+    var valores = aba.getRange(2, 1, ultimaLinha - 1, cabecalhos.length).getValues();
     for (var i = 0; i < valores.length; i++) {
       var reg = {};
       var temConteudo = false;
       for (var j = 0; j < cabecalhos.length; j++) {
-        var v = String(valores[i][j] || '').trim();
+        var v = celulaParaTexto(valores[i][j]);
         reg[cabecalhos[j]] = v;
         if (v !== '') temConteudo = true;
       }
@@ -226,6 +229,14 @@ function prepararAba() {
     cabecalhos = lerCabecalhos(aba);
   }
 
+  // Latitude e Longitude como TEXTO na coluna inteira. Precisa ser ANTES de
+  // qualquer escrita: se a célula estiver como número, o Sheets interpreta o
+  // ponto decimal conforme o idioma e pode arredondar a exibição.
+  ['Latitude', 'Longitude'].forEach(function (campo) {
+    var col = indiceDe(cabecalhos, campo);
+    if (col > 0) aba.getRange(1, col, aba.getMaxRows(), 1).setNumberFormat('@');
+  });
+
   // Preenche ID e Situação das linhas que ainda não têm
   var ultima = aba.getLastRow();
   if (ultima > 1) {
@@ -303,12 +314,25 @@ function definir(aba, cabecalhos, linha, nomeColuna, valor) {
   if (col > 0) aba.getRange(linha, col).setValue(valor);
 }
 
-/** Latitude e Longitude como texto, para o Sheets não arredondar. */
+/** Reforça o formato de texto na linha recém-escrita. */
 function formatarTextoCoordenadas(aba, cabecalhos, linha) {
   ['Latitude', 'Longitude'].forEach(function (campo) {
     var col = indiceDe(cabecalhos, campo);
     if (col > 0) aba.getRange(linha, col).setNumberFormat('@');
   });
+}
+
+/**
+ * Converte o valor bruto de uma célula em texto SEM perder precisão.
+ * Datas viram dd/MM/yyyy; números viram a representação completa.
+ */
+function celulaParaTexto(valor) {
+  if (valor === null || valor === undefined) return '';
+  if (Object.prototype.toString.call(valor) === '[object Date]') {
+    return Utilities.formatDate(valor, 'America/Sao_Paulo', 'dd/MM/yyyy');
+  }
+  if (typeof valor === 'number') return String(valor);
+  return String(valor).trim();
 }
 
 function gerarId() {

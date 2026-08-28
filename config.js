@@ -24,7 +24,7 @@
 
 const CONFIG = {
     title: "Organizações Parceiras - M'Boi Mirim",
-    subtitle: "Mapa colaborativo de organizações e serviços",
+    subtitle: "Mapa colaborativo de organizações e serviços — Zona Sul de São Paulo",
 
     // Endpoint da Serverless Function (Vercel) que lê a planilha e devolve GeoJSON
     apiPath: "/api/dados",
@@ -43,8 +43,8 @@ const CONFIG = {
        CATEGORIAS — cor e ícone de cada uma
        ===================================================================== */
     categorias: {
-        "Associações Beneficentes": { cor: "#3498db", icone: "fa-solid fa-hand-holding-heart" },
-        "Equipamentos Públicos": { cor: "#e67e22", icone: "fa-solid fa-building-columns" },
+        "Associações Beneficentes": { cor: "#3498db", icone: "fa-hand-holding-heart"},
+        "Equipamentos Públicos": { cor: "#e67e22", icone: "fa-solid fa-building-columns"},
         "Organizações Sociais": { cor: "#f1c40f", icone: "fa-solid fa-handshake" },
     },
 

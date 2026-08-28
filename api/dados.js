@@ -126,6 +126,7 @@ export default async function handler(req, res) {
 
         const contagemCategoria = new Map();
         const contagemSubpref = new Map();
+        const contagemSituacao = new Map();
 
         const features = [];
         let geocodificados = 0, pendentes = 0, encerradas = 0;
@@ -144,6 +145,7 @@ export default async function handler(req, res) {
             if (encerrada) encerradas++;
             contagemCategoria.set(categoria, (contagemCategoria.get(categoria) || 0) + 1);
             contagemSubpref.set(subpref, (contagemSubpref.get(subpref) || 0) + 1);
+            contagemSituacao.set(situacao, (contagemSituacao.get(situacao) || 0) + 1);
 
             const props = {};
             for (const c of campos) props[c] = String(linha[c] ?? '').trim();
@@ -230,6 +232,7 @@ export default async function handler(req, res) {
                 colunaSubprefeitura: cSubpref,
                 categorias: ordenarContagem(contagemCategoria),
                 subprefeituras: ordenarContagem(contagemSubpref),
+                situacoes: ordenarSituacao(contagemSituacao),
                 total: features.length,
                 geocodificados, porCoordenada, porEndereco, pendentes, encerradas,
                 fonte: PLANILHA_ATIVA ? 'apps-script' : 'csv-publico',
@@ -256,8 +259,16 @@ function vazio(aviso) {
     return {
         type: 'FeatureCollection',
         features: [],
-        meta: { campos: [], camposPopup: [], categorias: [], subprefeituras: [], total: 0, geocodificados: 0, pendentes: 0, aviso }
+        meta: { campos: [], camposPopup: [], categorias: [], subprefeituras: [], situacoes: [], total: 0, geocodificados: 0, pendentes: 0, aviso }
     };
+}
+
+/** "Em funcionamento" sempre primeiro; "Encerrada" depois. */
+function ordenarSituacao(mapa) {
+    const peso = (n) => (normalizar(n) === 'encerrada' ? 1 : 0);
+    return [...mapa.entries()]
+        .map(([nome, total]) => ({ nome, total }))
+        .sort((a, b) => peso(a.nome) - peso(b.nome) || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
 function ordenarContagem(mapa) {

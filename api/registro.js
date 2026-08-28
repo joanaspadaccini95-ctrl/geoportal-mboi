@@ -11,7 +11,7 @@
  */
 
 import { dentroDaRegiao } from './_geo.js';
-import { chamarPlanilha, PLANILHA_ATIVA, CODIGO_ACESSO } from './_planilha.js';
+import { chamarPlanilha, PLANILHA_ATIVA } from './_planilha.js';
 
 const LIMITE_TEXTO = 500;
 const SITUACAO_ATIVA = 'Em funcionamento';
@@ -37,11 +37,7 @@ export default async function handler(req, res) {
         const id = limpar(req.query?.id);
 
         if (!id) {
-            return res.status(200).json({
-                ok: true,
-                ativo: PLANILHA_ATIVA,
-                exigeCodigo: Boolean(CODIGO_ACESSO)
-            });
+            return res.status(200).json({ ok: true, ativo: PLANILHA_ATIVA });
         }
 
         if (!PLANILHA_ATIVA) {
@@ -76,14 +72,10 @@ export default async function handler(req, res) {
     try {
         const corpo = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
 
-        if (CODIGO_ACESSO && limpar(corpo.codigo) !== CODIGO_ACESSO) {
-            return res.status(403).json({ ok: false, erro: 'Código de acesso incorreto.' });
-        }
-
-        const quem = limpar(corpo.quem);
-        if (quem.length < 2) {
-            return res.status(400).json({ ok: false, erro: 'Escreva seu nome, para ficar registrado quem informou.' });
-        }
+        // Sem código de acesso: qualquer pessoa pode incluir, corrigir e mudar a
+        // situação. A URL do Apps Script continua protegida — ela só é conhecida
+        // pelo servidor, e o código dela é acrescentado em _planilha.js.
+        const quem = limpar(corpo.quem) || 'Não informado';
 
         const acao = corpo.acao || 'incluir';
 

@@ -60,7 +60,7 @@
         <!-- ---------------------- PAINEL LATERAL ---------------------- -->
         <aside class="sidebar" id="sidebar">
             <button class="sidebar-toggle-btn" id="btnToggleSidebar" title="Recolher/expandir painel">
-                <i class="fa-solid fa-chevron-left"></i>
+                <i class="fa-solid fa-chevron-right"></i>
             </button>
 
             <div class="sidebar-header">
@@ -74,6 +74,18 @@
                 <div class="filter-group">
                     <label class="group-title"><span>Mapa Base</span></label>
                     <div class="basemap-grid" id="basemapContainer"></div>
+                </div>
+
+                <!-- Filtro: Situação -->
+                <div class="filter-group" id="grupoSituacao" hidden>
+                    <label class="group-title">
+                        <span>Situação</span>
+                        <span class="group-actions">
+                            <button data-todos="marcar" data-grupo="situacao">Todas</button>
+                            <button data-todos="desmarcar" data-grupo="situacao">Nenhuma</button>
+                        </span>
+                    </label>
+                    <div class="filtro-lista" id="filtroSituacaoLista"></div>
                 </div>
 
                 <!-- Filtro: Categoria -->
@@ -106,26 +118,11 @@
                         <span>Organizações</span>
                         <span class="status-count" id="listCount">0</span>
                     </label>
-                    <label class="chk-encerradas">
-                        <input type="checkbox" id="chkEncerradas">
-                        <span id="rotuloEncerradas">Mostrar encerradas</span>
-                    </label>
                     <div class="org-list" id="orgList"></div>
                 </div>
 
             </div>
         </aside>
-
-        <!-- ------------------------- LEGENDA -------------------------- -->
-        <div class="legenda-box" id="legendaBox" hidden>
-            <div class="legenda-header">
-                <h3><i class="fa-solid fa-list"></i> Categorias</h3>
-                <button id="legendaToggle" title="Recolher/expandir legenda">
-                    <i class="fa-solid fa-chevron-down"></i>
-                </button>
-            </div>
-            <div class="legenda-lista" id="legendaLista"></div>
-        </div>
 
         <!-- Aviso de geocodificação pendente -->
         <div class="update-info-badge" id="pendingBadge" hidden>
@@ -154,14 +151,9 @@
         <p id="modalTexto"></p>
 
         <label class="modal-campo">
-            <span>Seu nome <em>*</em></span>
+            <span>Seu nome <em style="color:#94a3b8">(opcional)</em></span>
             <input type="text" id="modalQuem" maxlength="120" autocomplete="off"
-                   placeholder="Para ficar registrado quem informou">
-        </label>
-
-        <label class="modal-campo">
-            <span>Código de acesso <em>*</em></span>
-            <input type="text" id="modalCodigo" autocomplete="off">
+                   placeholder="Fica registrado quem informou">
         </label>
 
         <label class="modal-campo" id="modalGrupoObs" hidden>

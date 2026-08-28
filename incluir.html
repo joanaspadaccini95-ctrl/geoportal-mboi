@@ -17,6 +17,8 @@
     --linha: #dde5e9; --fundo: #f4f7f8;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* O atributo hidden precisa vencer qualquer display de classe */
+[hidden] { display: none !important; }
 body { font-family: 'Inter', system-ui, sans-serif; background: var(--fundo); color: var(--texto); font-size: 17px; line-height: 1.6; }
 
 .topo {
@@ -243,15 +245,9 @@ select { cursor: pointer; }
             </div>
 
             <label class="campo">
-                <span class="rotulo">Seu nome <span class="obrigatorio">*</span></span>
-                <span class="dica">Fica registrado quem informou, para dar para perguntar depois.</span>
+                <span class="rotulo">Seu nome</span>
+                <span class="dica">Opcional. Fica registrado quem informou, caso alguém precise perguntar depois.</span>
                 <input type="text" id="quem" maxlength="120" autocomplete="off">
-            </label>
-
-            <label class="campo" id="campoCodigo">
-                <span class="rotulo">Código de acesso <span class="obrigatorio">*</span></span>
-                <span class="dica">Peça à pessoa responsável pelo mapa.</span>
-                <input type="text" id="codigo" autocomplete="off">
             </label>
 
             <button type="submit" class="btn-enviar" id="btnEnviar">
