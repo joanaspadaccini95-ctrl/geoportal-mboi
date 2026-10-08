@@ -70,59 +70,91 @@
 
             <div class="sidebar-body">
 
-                <!-- Mapa base -->
-                <div class="filter-group">
-                    <label class="group-title"><span>Mapa Base</span></label>
-                    <div class="basemap-grid" id="basemapContainer"></div>
+                <!-- 1. Mapa base (compacto) -->
+                <div class="filter-group compacto">
+                    <div class="basemap-strip" id="basemapContainer"></div>
                 </div>
 
-                <!-- Filtro: Situação -->
-                <div class="filter-group" id="grupoSituacao" hidden>
-                    <label class="group-title">
-                        <span>Situação</span>
+                <!-- 2. Organizações -->
+                <div class="filter-group group-flex" data-recolhivel>
+                    <div class="group-title">
+                        <button class="group-toggle" type="button" data-alvo="paineisOrgs">
+                            <i class="fa-solid fa-chevron-down seta"></i>
+                            <span>Organizações</span>
+                        </button>
+                        <span class="status-count" id="listCount">0</span>
+                    </div>
+                    <div class="group-corpo" id="paineisOrgs">
+                        <div class="org-list" id="orgList"></div>
+                    </div>
+                </div>
+
+                <!-- 3. Situação -->
+                <div class="filter-group" id="grupoSituacao" data-recolhivel hidden>
+                    <div class="group-title">
+                        <button class="group-toggle" type="button" data-alvo="paineisSituacao">
+                            <i class="fa-solid fa-chevron-down seta"></i>
+                            <span>Situação</span>
+                        </button>
                         <span class="group-actions">
                             <button data-todos="marcar" data-grupo="situacao">Todas</button>
                             <button data-todos="desmarcar" data-grupo="situacao">Nenhuma</button>
                         </span>
-                    </label>
-                    <div class="filtro-lista" id="filtroSituacaoLista"></div>
+                    </div>
+                    <div class="group-corpo" id="paineisSituacao">
+                        <div class="filtro-lista" id="filtroSituacaoLista"></div>
+                    </div>
                 </div>
 
-                <!-- Filtro: Categoria -->
-                <div class="filter-group" id="grupoCategoria" hidden>
-                    <label class="group-title">
-                        <span>Categoria</span>
+                <!-- 4. Categoria -->
+                <div class="filter-group" id="grupoCategoria" data-recolhivel hidden>
+                    <div class="group-title">
+                        <button class="group-toggle" type="button" data-alvo="paineisCategoria">
+                            <i class="fa-solid fa-chevron-down seta"></i>
+                            <span>Categoria</span>
+                        </button>
                         <span class="group-actions">
                             <button data-todos="marcar" data-grupo="categoria">Todas</button>
                             <button data-todos="desmarcar" data-grupo="categoria">Nenhuma</button>
                         </span>
-                    </label>
-                    <div class="filtro-lista" id="filtroCategoriaLista"></div>
+                    </div>
+                    <div class="group-corpo" id="paineisCategoria">
+                        <div class="filtro-lista" id="filtroCategoriaLista"></div>
+                    </div>
                 </div>
 
-                <!-- Filtro: Subprefeitura -->
-                <div class="filter-group" id="grupoSubpref" hidden>
-                    <label class="group-title">
-                        <span>Subprefeitura</span>
+                <!-- 5. Subprefeitura -->
+                <div class="filter-group" id="grupoSubpref" data-recolhivel hidden>
+                    <div class="group-title">
+                        <button class="group-toggle" type="button" data-alvo="paineisSubpref">
+                            <i class="fa-solid fa-chevron-down seta"></i>
+                            <span>Subprefeitura</span>
+                        </button>
                         <span class="group-actions">
                             <button data-todos="marcar" data-grupo="subpref">Todas</button>
                             <button data-todos="desmarcar" data-grupo="subpref">Nenhuma</button>
                         </span>
-                    </label>
-                    <div class="filtro-lista" id="filtroSubprefLista"></div>
-                </div>
-
-                <!-- Lista de organizações -->
-                <div class="filter-group group-flex">
-                    <label class="group-title">
-                        <span>Organizações</span>
-                        <span class="status-count" id="listCount">0</span>
-                    </label>
-                    <div class="org-list" id="orgList"></div>
+                    </div>
+                    <div class="group-corpo" id="paineisSubpref">
+                        <div class="filtro-lista" id="filtroSubprefLista"></div>
+                    </div>
                 </div>
 
             </div>
         </aside>
+
+        <!-- Confirmação após cadastrar/editar -->
+        <div class="confirma-box" id="confirmaBox" hidden>
+            <div class="confirma-icone"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="confirma-texto">
+                <strong id="confirmaTitulo">Organização cadastrada</strong>
+                <span id="confirmaSub">Confira se o ponto está no lugar certo.</span>
+            </div>
+            <div class="confirma-acoes">
+                <button class="confirma-btn ok" id="confirmaOk">Está correto</button>
+                <a class="confirma-btn corrigir" id="confirmaCorrigir" href="#">Corrigir</a>
+            </div>
+        </div>
 
         <!-- Aviso de geocodificação pendente -->
         <div class="update-info-badge" id="pendingBadge" hidden>
@@ -154,6 +186,14 @@
             <span>Seu nome <em style="color:#94a3b8">(opcional)</em></span>
             <input type="text" id="modalQuem" maxlength="120" autocomplete="off"
                    placeholder="Fica registrado quem informou">
+        </label>
+
+        <label class="modal-campo" id="modalGrupoMotivo" hidden>
+            <span>Qual é o caso?</span>
+            <select id="modalMotivo">
+                <option value="Encerrada">A organização encerrou as atividades</option>
+                <option value="Duplicada">É repetida — já existe outra igual no mapa</option>
+            </select>
         </label>
 
         <label class="modal-campo" id="modalGrupoObs" hidden>

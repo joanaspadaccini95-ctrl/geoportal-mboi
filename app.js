@@ -30,7 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
         filtroSituacao: new Set(),
 
         selecionado: null,
-        carregando: false
+        carregando: false,
+        tentouRecarregar: false
     };
 
     const CHAVE_QUEM = 'mboi_quem';
@@ -72,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const container = document.getElementById('basemapContainer');
         container.innerHTML = '';
-        container.style.gridTemplateColumns = `repeat(${Math.min(CONFIG.baseMaps.length, 3)}, 1fr)`;
 
         CONFIG.baseMaps.forEach((bm, idx) => {
             const tileLayer = L.tileLayer(bm.url, {
@@ -87,12 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.activeBaseMapLayer = tileLayer;
             }
 
-            const card = document.createElement('div');
-            card.className = `basemap-card ${idx === 0 ? 'active' : ''}`;
-            card.dataset.id = bm.id;
-            card.innerHTML = `<i class="fa-solid ${bm.icon || 'fa-map'}"></i><span>${bm.name}</span>`;
-            card.addEventListener('click', () => switchBaseMap(bm.id));
-            container.appendChild(card);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `basemap-btn ${idx === 0 ? 'active' : ''}`;
+            btn.dataset.id = bm.id;
+            btn.title = bm.name;
+            btn.innerHTML = `<i class="fa-solid ${bm.icon || 'fa-map'}"></i><span>${bm.name}</span>`;
+            btn.addEventListener('click', () => switchBaseMap(bm.id));
+            container.appendChild(btn);
         });
 
         state.camadaPontos = L.layerGroup().addTo(state.map);
@@ -102,8 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.activeBaseMapLayer) state.map.removeLayer(state.activeBaseMapLayer);
         state.activeBaseMapLayer = state.baseMapLayers[id];
         state.activeBaseMapLayer.addTo(state.map);
-        document.querySelectorAll('.basemap-card').forEach((card) => {
-            card.classList.toggle('active', card.dataset.id === id);
+        document.querySelectorAll('.basemap-btn').forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.id === id);
         });
     }
 
@@ -163,9 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function ehEncerrada(situacao) {
-        return String(situacao || '')
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase().trim() === 'encerrada';
+        const v = normalizar(situacao);
+        return v === 'encerrada' || v === 'duplicada';
     }
 
     function estiloDe(categoria) {
@@ -207,12 +208,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Todos os filtros começam marcados
             state.filtroCategoria = new Set(state.categorias.map((c) => c.nome));
             state.filtroSubpref = new Set(state.subprefeituras.map((s) => s.nome));
-            state.filtroSituacao = new Set(state.situacoes.map((s) => s.nome));
+            const ocultas = (CONFIG.situacoesOcultasPorPadrao || [])
+                .map((v) => normalizar(v));
+            state.filtroSituacao = new Set(
+                state.situacoes.map((s) => s.nome).filter((n) => !ocultas.includes(normalizar(n)))
+            );
 
             renderizarFiltros();
             renderizarPontos();
             aplicarFiltros();
-            ajustarEnquadramento();
+
+            // Veio do formulário? Vai direto para a organização em vez de
+            // enquadrar tudo — é o que evita a pessoa achar que não gravou.
+            if (!focarOrganizacaoDaURL()) ajustarEnquadramento();
+
             avisarPendencias(meta);
 
             const geo = meta.geocodificados || 0;
@@ -228,6 +237,68 @@ document.addEventListener('DOMContentLoaded', () => {
             state.carregando = false;
             mostrarLoading(false);
         }
+    }
+
+    /**
+     * Item 4: depois de cadastrar/corrigir, o formulário manda a pessoa de
+     * volta ao mapa com ?org=<id>. Aqui o mapa aproxima na organização, abre
+     * o balão e mostra a caixa de confirmação.
+     * Devolve true quando encontrou e focou algo.
+     */
+    function focarOrganizacaoDaURL() {
+        const params = new URLSearchParams(location.search);
+        const id = params.get('org');
+        if (!id) return false;
+
+        const indice = state.features.findIndex((f) => f.properties._id === id);
+        if (indice === -1) {
+            // Ainda não apareceu na leitura (cache). Tenta de novo uma vez.
+            if (!state.tentouRecarregar) {
+                state.tentouRecarregar = true;
+                setTimeout(() => carregarDados(true), 1500);
+            }
+            return false;
+        }
+
+        const f = state.features[indice];
+
+        // Se a situação dela estiver desmarcada no filtro, marca — senão o
+        // ponto não aparece e a pessoa acha de novo que não gravou.
+        const sit = f.properties._situacao;
+        if (sit && !state.filtroSituacao.has(sit)) {
+            state.filtroSituacao.add(sit);
+            renderizarFiltros();
+            aplicarFiltros();
+        }
+
+        if (!f.geometry) {
+            showToast('A organização foi gravada, mas ainda não tem posição no mapa.', 'error');
+            return true;
+        }
+
+        destacar(indice, true);
+        mostrarConfirmacao(f.properties, params.get('acao') === 'editar');
+        limparURL();
+        return true;
+    }
+
+    function mostrarConfirmacao(props, foiEdicao) {
+        const caixa = document.getElementById('confirmaBox');
+        document.getElementById('confirmaTitulo').textContent = foiEdicao
+            ? `${props[state.colunaNome] || 'Organização'} foi atualizada`
+            : `${props[state.colunaNome] || 'Organização'} foi cadastrada`;
+        document.getElementById('confirmaSub').textContent =
+            'Confira no mapa se o ponto está no lugar certo.';
+        document.getElementById('confirmaCorrigir').href =
+            `${CONFIG.incluirUrl}?id=${encodeURIComponent(props._id)}`;
+        caixa.hidden = false;
+    }
+
+    /** Tira o ?org= da barra de endereço para o recarregar não repetir tudo. */
+    function limparURL() {
+        try {
+            history.replaceState(null, '', location.pathname);
+        } catch { /* navegador pode bloquear */ }
     }
 
     function avisarPendencias(meta) {
@@ -316,7 +387,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const encerrada = props._encerrada;
         const selo = encerrada
-            ? `<div class="popup-selo"><i class="fa-solid fa-circle-xmark"></i> Encerrada</div>`
+            ? `<div class="popup-selo"><i class="fa-solid fa-circle-xmark"></i> ${escapar(props._situacao || 'Encerrada')}</div>`
             : '';
 
         const verificacao = props._atualizadoEm
@@ -339,7 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          <i class="fa-solid fa-check"></i> Continua aberta
                        </button>
                        <button class="pop-btn encerrar" data-acao="encerrar" data-id="${escapar(props._id)}" data-nome="${escapar(nome)}">
-                         <i class="fa-solid fa-xmark"></i> Fechou
+                         <i class="fa-solid fa-xmark"></i> Fechou / repetida
                        </button>`}
             </div>` : '';
 
@@ -461,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             linha.innerHTML = `
-                <input type="checkbox" checked data-valor="${escapar(item.nome)}">
+                <input type="checkbox" ${selecionados.has(item.nome) ? 'checked' : ''} data-valor="${escapar(item.nome)}">
                 ${marca}
                 <span class="filtro-nome">${escapar(item.nome)}</span>
                 <span class="filtro-total">${item.total}</span>`;
@@ -610,8 +681,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (abrirPopup) {
             state.map.flyTo(marcador.getLatLng(), Math.max(state.map.getZoom(), 17), { duration: 0.7 });
-            setTimeout(() => marcador.openPopup(), 300);
+            setTimeout(() => {
+                marcador.openPopup();
+                centralizarBalao();
+            }, 320);
         }
+    }
+
+    /**
+     * O balão abre ACIMA do ponto. Se o mapa centraliza no ponto, metade do
+     * balão fica fora da tela. Aqui o mapa desloca para baixo metade da altura
+     * do balão, deixando o conjunto balão+ponto centralizado.
+     */
+    function centralizarBalao() {
+        setTimeout(() => {
+            const popup = state.map._popup;
+            if (!popup) return;
+            const el = popup.getElement();
+            if (!el) return;
+
+            const altura = el.offsetHeight;
+            if (!altura) return;
+
+            // Metade da altura do balão, limitada para não exagerar em telas baixas
+            const limite = Math.round(state.map.getSize().y * 0.32);
+            const deslocamento = Math.min(Math.round(altura / 2), limite);
+
+            state.map.panBy([0, -deslocamento], { animate: true, duration: 0.35 });
+        }, 120);
     }
 
     function limparDestaque() {
@@ -644,11 +741,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 pedirObs: false
             },
             encerrar: {
-                titulo: 'Informar que fechou',
+                titulo: 'Tirar do mapa',
                 texto: `<strong>${escapar(nome)}</strong> sairá do mapa, mas <strong>nada é apagado</strong>: o registro fica guardado e pode voltar a qualquer momento.`,
-                botao: 'Marcar como encerrada',
+                botao: 'Confirmar',
                 classe: 'perigo',
-                pedirObs: true
+                pedirObs: true,
+                pedirMotivo: true
             },
             reabrir: {
                 titulo: 'Voltou a funcionar',
@@ -662,7 +760,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modalTitulo').textContent = textos.titulo;
         document.getElementById('modalTexto').innerHTML = textos.texto;
         document.getElementById('modalGrupoObs').hidden = !textos.pedirObs;
+        document.getElementById('modalGrupoMotivo').hidden = !textos.pedirMotivo;
         document.getElementById('modalObs').value = '';
+        document.getElementById('modalMotivo').value = 'Encerrada';
 
         const btn = document.getElementById('modalConfirmar');
         btn.textContent = textos.botao;
@@ -702,7 +802,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({
                     acao: 'situacao',
                     id: acaoPendente.id,
-                    situacao: acaoPendente.acao === 'encerrar' ? 'Encerrada' : 'Em funcionamento',
+                    situacao: acaoPendente.acao === 'encerrar'
+                        ? document.getElementById('modalMotivo').value
+                        : 'Em funcionamento',
                     observacao: document.getElementById('modalObs').value.trim(),
                     quem
                 })
@@ -777,6 +879,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 : 'fa-solid fa-chevron-right';
         });
 
+        // Recolher / expandir cada grupo de filtro
+        document.querySelectorAll('.group-toggle').forEach((botao) => {
+            botao.addEventListener('click', () => {
+                const grupo = botao.closest('.filter-group');
+                if (grupo) grupo.classList.toggle('recolhido');
+            });
+        });
+
         let debounce;
         document.getElementById('searchInput').addEventListener('input', () => {
             clearTimeout(debounce);
@@ -811,6 +921,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') fecharModal();
+        });
+
+        document.getElementById('confirmaOk').addEventListener('click', () => {
+            document.getElementById('confirmaBox').hidden = true;
         });
 
         document.getElementById('btnRefresh').addEventListener('click', () => carregarDados(true));

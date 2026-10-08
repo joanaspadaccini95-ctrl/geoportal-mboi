@@ -15,7 +15,10 @@ import { chamarPlanilha, PLANILHA_ATIVA } from './_planilha.js';
 
 const LIMITE_TEXTO = 500;
 const SITUACAO_ATIVA = 'Em funcionamento';
-const SITUACAO_ENCERRADA = 'Encerrada';
+// Situações que tiram a organização do mapa. "Duplicada" existe separada de
+// "Encerrada" porque significam coisas diferentes: uma organização repetida
+// não fechou, e marcá-la como encerrada mentiria sobre ela.
+const SITUACOES_OCULTAS = ['Encerrada', 'Duplicada'];
 
 function limpar(txt) {
     return String(txt ?? '').trim().slice(0, LIMITE_TEXTO);
@@ -84,8 +87,8 @@ export default async function handler(req, res) {
             const id = limpar(corpo.id);
             if (!id) return res.status(400).json({ ok: false, erro: 'Registro não identificado.' });
 
-            const situacao = String(corpo.situacao) === SITUACAO_ENCERRADA
-                ? SITUACAO_ENCERRADA : SITUACAO_ATIVA;
+            const pedida = limpar(corpo.situacao);
+            const situacao = SITUACOES_OCULTAS.includes(pedida) ? pedida : SITUACAO_ATIVA;
 
             const r = await chamarPlanilha({
                 acao: 'situacao', id, situacao, quem,

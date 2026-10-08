@@ -18,7 +18,8 @@ const MAX_NOVOS_POR_CHAMADA = 40;
 const cacheGeo = new Map();
 
 const SEM_VALOR = 'Não informado';
-const SITUACAO_ENCERRADA = 'Encerrada';
+// Situações que tiram a organização do mapa (ficam esmaecidas / filtráveis)
+const SITUACOES_OCULTAS = ['encerrada', 'duplicada'];
 
 // Colunas de controle: existem para o sistema, não para quem consulta o mapa
 const COLUNAS_INTERNAS = ['id', 'latitude', 'longitude'];
@@ -140,7 +141,7 @@ export default async function handler(req, res) {
             const categoria = (cCategoria && String(linha[cCategoria] || '').trim()) || SEM_VALOR;
             const subpref = (cSubpref && String(linha[cSubpref] || '').trim()) || SEM_VALOR;
             const situacao = (cSituacao && String(linha[cSituacao] || '').trim()) || 'Em funcionamento';
-            const encerrada = normalizar(situacao) === normalizar(SITUACAO_ENCERRADA);
+            const encerrada = SITUACOES_OCULTAS.includes(normalizar(situacao));
 
             if (encerrada) encerradas++;
             contagemCategoria.set(categoria, (contagemCategoria.get(categoria) || 0) + 1);
@@ -263,9 +264,10 @@ function vazio(aviso) {
     };
 }
 
-/** "Em funcionamento" sempre primeiro; "Encerrada" depois. */
+/** "Em funcionamento" primeiro, depois "Encerrada", depois "Duplicada". */
 function ordenarSituacao(mapa) {
-    const peso = (n) => (normalizar(n) === 'encerrada' ? 1 : 0);
+    const ordem = { 'em funcionamento': 0, 'encerrada': 1, 'duplicada': 2 };
+    const peso = (n) => (ordem[normalizar(n)] ?? 3);
     return [...mapa.entries()]
         .map(([nome, total]) => ({ nome, total }))
         .sort((a, b) => peso(a.nome) - peso(b.nome) || a.nome.localeCompare(b.nome, 'pt-BR'));

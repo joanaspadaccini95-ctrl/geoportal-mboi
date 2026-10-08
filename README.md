@@ -135,6 +135,46 @@ O botão **Exportar** baixa um `.xlsx` com as organizações visíveis no moment
 
 ---
 
+## 4d. Reparo das coordenadas (execute UMA vez)
+
+Planilhas do Google em português interpretam o ponto de `-23.659912` como separador de **milhar** e guardam o inteiro `-23659912`, exibindo `-23.659.912`. O site lia isso como `-23.659` e o ponto caía 25 a 100 metros fora.
+
+Há três camadas de conserto, e as três já estão no código:
+
+1. **Reparo do que já existe** — no editor do Apps Script, menu de funções → **`repararCoordenadas`** → Executar. Converte as colunas para texto e reconstrói os valores estragados. Pode rodar de novo sem risco; valores já corretos não são tocados. O resultado sai em *Registro de execução*.
+2. **Prevenção** — as colunas Latitude/Longitude passam a ser formatadas como texto antes de qualquer escrita, então o Sheets não reinterpreta nada.
+3. **Rede de segurança** — o `parseCoord` do site reconhece e reconstrói o formato estragado mesmo que ele reapareça.
+
+---
+
+## 4e. Organizações repetidas
+
+### Prevenção, no formulário
+
+Ao sair do campo Nome ou ao posicionar o alfinete, o site procura algo parecido já cadastrado e avisa, oferecendo **corrigir a existente** em vez de criar outra. O critério está em `config.js` → `duplicatas`:
+
+- `distanciaMetros` (150): raio considerado "no mesmo lugar"
+- `semelhancaMinima` (0.5): quanto os nomes precisam se parecer
+
+A comparação ignora palavras genéricas (associação, instituto, centro…) e tolera erros de digitação, casando palavras que compartilham as quatro primeiras letras — é o que faz "Santo Mártinez" bater com "Santos Mártires".
+
+### Quando a repetida já entrou
+
+No balão, **Fechou / repetida** abre uma caixa que pergunta o motivo: *encerrou as atividades* ou *é repetida*. A diferença importa — marcar uma duplicata como "Encerrada" faz a base afirmar que a organização fechou, o que não é verdade.
+
+`Situação = Duplicada` sai do mapa por padrão (`situacoesOcultasPorPadrao` no `config.js`) e continua disponível no filtro Situação para revisão. Nada é apagado.
+
+---
+
+## 4f. Depois de cadastrar
+
+O formulário não termina com uma mensagem: ele **leva a pessoa ao mapa**, já aproximado na organização, com o balão aberto e uma caixa de confirmação (*Está correto* / *Corrigir*).
+
+Isso não é enfeite. O cadastro em duplicata vinha de a pessoa gravar, não ver o ponto aparecer (cache de até 60 s) e concluir que havia falhado. Ver o ponto imediatamente remove a dúvida que causava o problema.
+
+
+---
+
 ## 5. Rodar localmente
 
 ```bash

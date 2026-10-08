@@ -22,7 +22,9 @@ document.addEventListener('DOMContentLoaded', () => {
         enviando: false,
         reverseTimer: null,
         idEdicao: new URLSearchParams(location.search).get('id') || '',
-        registro: null
+        registro: null,
+        existentes: [],          // organizações já cadastradas (para checar repetição)
+        duplicataIgnorada: false
     };
 
     /* ======================================================================
@@ -32,8 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function iniciarMapa() {
         state.map = L.map('mapa', { center: CONFIG.mapa.center, zoom: CONFIG.mapa.zoom });
 
-        // Satélite primeiro: é mais fácil reconhecer o telhado do que o nome da rua
-        const base = CONFIG.baseMaps[0];
+        // Satélite COM nomes de ruas: dá para reconhecer o telhado e conferir
+        // a rua e os estabelecimentos vizinhos ao mesmo tempo.
+        const base = CONFIG.baseMaps.find((b) => b.id === CONFIG.mapaDoFormulario)
+                  || CONFIG.baseMaps[0];
         L.tileLayer(base.url, { attribution: base.attribution, maxZoom: base.maxZoom }).addTo(state.map);
 
         const icone = L.divIcon({
@@ -55,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.posicionado = true;
         avisar('ok', 'fa-circle-check', `Posição marcada: ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`);
         buscarEnderecoDaPosicao(true);
+        verificarRepetida();
     }
 
     function avisar(tipo, icone, texto) {
@@ -95,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.alfinete.setLatLng([d.lat, d.lon]);
             state.map.setView([d.lat, d.lon], 18);
             state.posicionado = true;
+            verificarRepetida();
 
             if (d.endereco && !el('endereco').value.trim()) el('endereco').value = d.endereco;
 
@@ -141,7 +147,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const resp = await fetch(CONFIG.apiPath);
             const d = await resp.json();
             (d.meta?.categorias || []).forEach((c) => { if (c.nome !== CONFIG.semValor) nomes.add(c.nome); });
-            (d.meta?.subprefeituras || []).forEach((s) => { if (s.nome !== CONFIG.semValor) subs.add(s.nome); });
+            (d.meta?.subprefeituras || []).forEach((x) => { if (x.nome !== CONFIG.semValor) subs.add(x.nome); });
+
+            // Guarda as já cadastradas para avisar sobre repetição
+            const colNome = d.meta?.colunaNome || CONFIG.colunas.nome;
+            state.existentes = (d.features || [])
+                .filter((f) => f.geometry && f.properties._id !== state.idEdicao)
+                .map((f) => ({
+                    id: f.properties._id,
+                    nome: f.properties[colNome] || '',
+                    situacao: f.properties._situacao || '',
+                    lat: f.geometry.coordinates[1],
+                    lon: f.geometry.coordinates[0]
+                }));
         } catch { /* segue com o config.js */ }
 
         preencherSelect('categoria', [...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR')));
@@ -158,6 +176,105 @@ document.addEventListener('DOMContentLoaded', () => {
             select.appendChild(opt);
         });
         if (atual) select.value = atual;
+    }
+
+    /* ======================================================================
+       3b. AVISO DE ORGANIZAÇÃO REPETIDA
+       ====================================================================== */
+
+    const PALAVRAS_VAZIAS = new Set([
+        'associacao', 'associacoes', 'instituto', 'institucao', 'entidade',
+        'centro', 'casa', 'sociedade', 'nucleo', 'projeto', 'grupo',
+        'de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'sp', 'em'
+    ]);
+
+    function palavrasChave(nome) {
+        const limpo = String(nome || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase().replace(/[^a-z0-9 ]/g, ' ');
+        return new Set(limpo.split(/\s+/).filter((t) => t && !PALAVRAS_VAZIAS.has(t)));
+    }
+
+    /**
+     * Duas palavras contam como a mesma se forem iguais OU se compartilharem
+     * as 4 primeiras letras. Sem isso, erros de digitação passam batido:
+     * "Santo Mártinez" e "Santos Mártires" não teriam nenhuma palavra em
+     * comum, apesar de serem a mesma organização.
+     */
+    function mesmaPalavra(x, y) {
+        if (x === y) return true;
+        if (x.length < 4 || y.length < 4) return false;
+        return x.slice(0, 4) === y.slice(0, 4);
+    }
+
+    /** Proporção de palavras em comum entre os dois nomes (0 a 1). */
+    function semelhanca(a, b) {
+        const A = [...palavrasChave(a)], B = [...palavrasChave(b)];
+        if (A.length === 0 || B.length === 0) return 0;
+
+        const usados = new Array(B.length).fill(false);
+        let comuns = 0;
+        for (const x of A) {
+            for (let i = 0; i < B.length; i++) {
+                if (!usados[i] && mesmaPalavra(x, B[i])) { usados[i] = true; comuns++; break; }
+            }
+        }
+        return comuns / (A.length + B.length - comuns);
+    }
+
+    function distanciaMetros(lat1, lon1, lat2, lon2) {
+        const R = 6371000, rad = Math.PI / 180;
+        const x = (lon2 - lon1) * rad * Math.cos((lat1 + lat2) / 2 * rad);
+        const y = (lat2 - lat1) * rad;
+        return Math.sqrt(x * x + y * y) * R;
+    }
+
+    /** Procura uma organização parecida no mesmo lugar. */
+    function procurarRepetida() {
+        const nome = el('nome').value.trim();
+        if (!nome || state.existentes.length === 0) return null;
+
+        const cfg = CONFIG.duplicatas || {};
+        const raio = cfg.distanciaMetros || 150;
+        const minimo = cfg.semelhancaMinima || 0.5;
+
+        const p = state.posicionado ? state.alfinete.getLatLng() : null;
+
+        let melhor = null;
+        for (const org of state.existentes) {
+            const sem = semelhanca(nome, org.nome);
+            if (sem < minimo) continue;
+
+            const dist = p ? distanciaMetros(p.lat, p.lng, org.lat, org.lon) : null;
+
+            // Nome quase idêntico conta mesmo longe; parecido só se estiver perto
+            const vale = sem >= 0.85 || (dist !== null && dist <= raio);
+            if (!vale) continue;
+
+            if (!melhor || sem > melhor.sem) melhor = { org, sem, dist };
+        }
+        return melhor;
+    }
+
+    function verificarRepetida() {
+        const caixa = el('avisoRepetida');
+        if (state.idEdicao || state.duplicataIgnorada) { caixa.hidden = true; return; }
+
+        const achado = procurarRepetida();
+        if (!achado) { caixa.hidden = true; return; }
+
+        const { org, dist } = achado;
+        const onde = dist === null
+            ? 'já está cadastrada'
+            : (dist < 20 ? 'já está cadastrada praticamente no mesmo ponto'
+                         : `já está cadastrada a ${Math.round(dist)} metros daqui`);
+
+        el('repetidaTexto').innerHTML =
+            `<strong>${escapar(org.nome)}</strong> ${onde}` +
+            (org.situacao && org.situacao !== 'Em funcionamento'
+                ? ` <em>(marcada como ${escapar(org.situacao)})</em>` : '') + '.';
+        el('repetidaCorrigir').href = `./incluir.html?id=${encodeURIComponent(org.id)}`;
+        caixa.hidden = false;
     }
 
     /* ======================================================================
@@ -282,20 +399,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (d.ok) {
                 lembrar(quem);
-                if (state.idEdicao) {
-                    mostrarResultado(true,
-                        `<strong>Alterações salvas.</strong><br>` +
-                        `<a href="./index.html" style="color:#1c5c34;font-weight:700">Voltar ao mapa</a>`);
-                } else {
-                    mostrarResultado(true,
-                        `<strong>Pronto! ${escapar(nome)} foi cadastrada.</strong><br>` +
-                        `<a href="./index.html" style="color:#1c5c34;font-weight:700">Ver no mapa</a> ou ` +
-                        `<a href="./incluir.html" style="color:#1c5c34;font-weight:700">cadastrar outra</a>.`);
-                    el('formulario').querySelectorAll('input, textarea, select').forEach((c) => {
-                        if (c.id !== 'quem') c.value = '';
-                    });
-                    state.posicionado = false;
-                }
+
+                // Em vez de só avisar "pronto", leva a pessoa ao mapa já
+                // aproximado na organização. É o que impede o cadastro
+                // repetido por achar que não gravou.
+                const id = state.idEdicao || d.id || '';
+                const acao = state.idEdicao ? 'editar' : 'novo';
+
+                mostrarResultado(true,
+                    `<strong>${escapar(nome)} foi ${state.idEdicao ? 'atualizada' : 'cadastrada'}.</strong><br>` +
+                    `Levando você ao mapa para conferir a posição…`);
+
+                setTimeout(() => {
+                    location.href = id
+                        ? `./index.html?org=${encodeURIComponent(id)}&acao=${acao}`
+                        : './index.html';
+                }, 900);
+                return;
             } else {
                 mostrarResultado(false, d.erro || 'Não foi possível salvar.');
             }
@@ -348,6 +468,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const ativo = await verificarAtivo();
         if (ativo && state.idEdicao) await carregarParaEdicao();
     })();
+
+    el('nome').addEventListener('blur', verificarRepetida);
+    el('repetidaIgnorar').addEventListener('click', () => {
+        state.duplicataIgnorada = true;
+        el('avisoRepetida').hidden = true;
+    });
 
     el('btnLocalizar').addEventListener('click', localizar);
     el('entradaLocal').addEventListener('keydown', (e) => {

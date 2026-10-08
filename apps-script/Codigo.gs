@@ -55,6 +55,7 @@ var COL_OBSERVACAO = 'Observação';
 
 var SITUACAO_ATIVA = 'Em funcionamento';
 var SITUACAO_ENCERRADA = 'Encerrada';
+var SITUACAO_DUPLICADA = 'Duplicada';
 
 /* ==========================================================================
    PONTO DE ENTRADA
@@ -184,7 +185,9 @@ function acaoSituacao(aba, dados) {
   if (linha < 0) return responder(false, 'Organização não encontrada. Recarregue o mapa e tente de novo.');
 
   var cabecalhos = lerCabecalhos(aba);
-  var nova = (String(dados.situacao) === SITUACAO_ENCERRADA) ? SITUACAO_ENCERRADA : SITUACAO_ATIVA;
+  var pedida = String(dados.situacao || '').trim();
+  var nova = (pedida === SITUACAO_ENCERRADA || pedida === SITUACAO_DUPLICADA)
+    ? pedida : SITUACAO_ATIVA;
 
   definir(aba, cabecalhos, linha, COL_SITUACAO, nova);
   definir(aba, cabecalhos, linha, COL_ATUALIZADO_EM, carimboDeHoje());
@@ -199,9 +202,10 @@ function acaoSituacao(aba, dados) {
     }
   }
 
-  return responder(true, nova === SITUACAO_ENCERRADA
-    ? 'Organização marcada como encerrada.'
-    : 'Funcionamento confirmado.');
+  return responder(true,
+    nova === SITUACAO_ENCERRADA ? 'Organização marcada como encerrada.'
+  : nova === SITUACAO_DUPLICADA ? 'Organização marcada como repetida.'
+  : 'Funcionamento confirmado.');
 }
 
 /* ==========================================================================
@@ -331,8 +335,48 @@ function celulaParaTexto(valor) {
   if (Object.prototype.toString.call(valor) === '[object Date]') {
     return Utilities.formatDate(valor, 'America/Sao_Paulo', 'dd/MM/yyyy');
   }
-  if (typeof valor === 'number') return String(valor);
+  if (typeof valor === 'number') {
+    // Número grande = coordenada que perdeu o ponto decimal (-23659912).
+    // Devolve como está; quem conserta é o parseCoord do site. O reparo
+    // definitivo na planilha é feito por repararCoordenadas(), abaixo.
+    return String(valor);
+  }
   return String(valor).trim();
+}
+
+/**
+ * Reconstrói uma coordenada estragada pelo idioma da planilha.
+ * -23659912 ou "-23.659.912"  ->  "-23.659912"
+ * Devolve '' quando não dá para reconstruir.
+ */
+function consertarCoordenada(valor) {
+  if (valor === null || valor === undefined || valor === '') return '';
+
+  var txt = String(valor).trim();
+  var pontos = (txt.match(/\./g) || []).length;
+  var virgulas = (txt.match(/,/g) || []).length;
+
+  if (virgulas && pontos) {
+    txt = txt.lastIndexOf(',') > txt.lastIndexOf('.')
+      ? txt.replace(/\./g, '').replace(',', '.')
+      : txt.replace(/,/g, '');
+  } else if (pontos > 1) {
+    txt = txt.replace(/\./g, '');       // pontos eram separador de milhar
+  } else if (virgulas > 1) {
+    txt = txt.replace(/,/g, '');
+  } else {
+    txt = txt.replace(',', '.');
+  }
+
+  var n = parseFloat(txt);
+  if (!isFinite(n)) return '';
+
+  var sinal = n < 0 ? -1 : 1;
+  var abs = Math.abs(n);
+  var voltas = 0;
+  while (abs > 180 && voltas < 12) { abs = abs / 10; voltas++; }
+
+  return (sinal * abs).toFixed(6);
 }
 
 function gerarId() {
@@ -366,6 +410,56 @@ function responder(ok, mensagem, extra) {
   return ContentService
     .createTextOutput(JSON.stringify(corpo))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ==========================================================================
+   REPARO ÚNICO DAS COORDENADAS
+   --------------------------------------------------------------------------
+   Rode UMA VEZ pelo editor (menu de funções -> repararCoordenadas -> Executar).
+   Ela converte as colunas Latitude/Longitude para TEXTO e reconstrói os
+   valores que o Sheets estragou lendo o ponto como separador de milhar.
+   Pode ser rodada de novo sem risco: valores já corretos não são tocados.
+   ========================================================================== */
+function repararCoordenadas() {
+  var aba = prepararAba();
+  var cabecalhos = lerCabecalhos(aba);
+  var ultima = aba.getLastRow();
+  if (ultima < 2) { Logger.log('Planilha sem registros.'); return; }
+
+  var relatorio = [];
+
+  ['Latitude', 'Longitude'].forEach(function (campo) {
+    var col = indiceDe(cabecalhos, campo);
+    if (col === 0) return;
+
+    var faixa = aba.getRange(2, col, ultima - 1, 1);
+    var brutos = faixa.getValues();
+
+    // Texto ANTES de reescrever, senão o Sheets estraga tudo de novo
+    faixa.setNumberFormat('@');
+
+    var saida = [];
+    for (var i = 0; i < brutos.length; i++) {
+      var original = brutos[i][0];
+      var consertado = consertarCoordenada(original);
+
+      if (consertado === '') {
+        saida.push(['']);
+      } else {
+        saida.push([consertado]);
+        if (String(original).trim() !== consertado) {
+          relatorio.push('  linha ' + (i + 2) + '  ' + campo + ': ' +
+                         String(original) + '  ->  ' + consertado);
+        }
+      }
+    }
+    faixa.setValues(saida);
+  });
+
+  Logger.log('=== REPARO DE COORDENADAS ===');
+  Logger.log(relatorio.length === 0
+    ? 'Nada a consertar: todas as coordenadas já estavam corretas.'
+    : relatorio.length + ' valor(es) corrigido(s):\n' + relatorio.join('\n'));
 }
 
 /* ==========================================================================

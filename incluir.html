@@ -170,6 +170,22 @@ select { cursor: pointer; }
                 <input type="text" id="nome" maxlength="200" required autocomplete="off">
             </label>
 
+            <div class="aviso repetida" id="avisoRepetida" hidden>
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <div class="repetida-corpo">
+                    <strong>Essa organização talvez já esteja no mapa</strong>
+                    <p id="repetidaTexto"></p>
+                    <div class="repetida-acoes">
+                        <a class="rep-btn principal" id="repetidaCorrigir" href="#">
+                            <i class="fa-solid fa-pen"></i> É essa — quero corrigir a existente
+                        </a>
+                        <button type="button" class="rep-btn" id="repetidaIgnorar">
+                            É outra, continuar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <label class="campo">
                 <span class="rotulo">Serviços oferecidos</span>
                 <span class="dica">O que ela faz. Separe por vírgula.</span>
@@ -227,7 +243,7 @@ select { cursor: pointer; }
 
             <div class="status-mapa neutro" id="statusMapa">
                 <i class="fa-solid fa-hand-pointer"></i>
-                <div>Arraste o alfinete vermelho até o local exato da organização. Você pode aproximar com dois dedos ou com a rolagem do mouse.</div>
+                <div>Arraste o alfinete vermelho até o local exato da organização. O mapa mostra os nomes das ruas e dos estabelecimentos vizinhos — use-os como referência. Aproxime com dois dedos ou com a rolagem do mouse.</div>
             </div>
 
             <label class="campo" style="margin-top:16px">

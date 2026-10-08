@@ -35,20 +35,50 @@ export function soDigitos(txt) {
     return String(txt || '').replace(/\D/g, '');
 }
 
-/** Converte texto em decimal aceitando vírgula OU ponto como separador. */
+/**
+ * Converte texto em decimal, tolerando os estragos que o Google Sheets faz
+ * com coordenadas em planilhas no idioma português.
+ *
+ * Aceita:
+ *   "-23.685918"    ponto decimal
+ *   "-23,685918"    vírgula decimal
+ *   "-23.659.912"   o Sheets leu o ponto como separador de MILHAR e guardou
+ *                   o inteiro -23659912; aqui ele é reconstruído
+ *   -23659912       o mesmo caso, já como número
+ */
 export function parseCoord(valor) {
     const txt = String(valor ?? '').trim();
     if (!txt) return NaN;
+
     let limpo = txt.replace(/\s/g, '');
-    if (limpo.includes(',') && limpo.includes('.')) {
+    const pontos = (limpo.match(/\./g) || []).length;
+    const virgulas = (limpo.match(/,/g) || []).length;
+
+    if (virgulas && pontos) {
+        // Tem os dois: o último separador é o decimal
         limpo = limpo.lastIndexOf(',') > limpo.lastIndexOf('.')
             ? limpo.replace(/\./g, '').replace(',', '.')
             : limpo.replace(/,/g, '');
+    } else if (pontos > 1) {
+        // "-23.659.912" — pontos como separador de milhar
+        limpo = limpo.replace(/\./g, '');
+    } else if (virgulas > 1) {
+        limpo = limpo.replace(/,/g, '');
     } else {
         limpo = limpo.replace(',', '.');
     }
-    const n = parseFloat(limpo);
-    return Number.isFinite(n) ? n : NaN;
+
+    let n = parseFloat(limpo);
+    if (!Number.isFinite(n)) return NaN;
+
+    // Coordenada que perdeu o ponto decimal: -23659912 -> -23.659912
+    // Divide por 10 até caber em um grau válido.
+    const sinal = n < 0 ? -1 : 1;
+    let abs = Math.abs(n);
+    let voltas = 0;
+    while (abs > 180 && voltas < 12) { abs /= 10; voltas++; }
+
+    return sinal * abs;
 }
 
 export function extrairCEP(endereco) {
