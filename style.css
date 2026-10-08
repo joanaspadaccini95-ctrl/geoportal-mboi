@@ -324,10 +324,8 @@ body, html {
 }
 
 .filter-group.group-flex {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    min-height: 180px;
 }
 
 .filter-group.compacto { padding: 8px; }
@@ -383,8 +381,17 @@ body, html {
 .filter-group.group-flex .group-corpo {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
+}
+
+/* Alça de redimensionamento mais visível */
+.org-list::-webkit-resizer { background: transparent; }
+
+.redim-dica {
+    font-size: 0.66rem;
+    color: var(--text-dim);
+    text-align: right;
+    margin-top: 4px;
+    user-select: none;
 }
 
 .filter-group.recolhido .group-corpo {
@@ -393,7 +400,7 @@ body, html {
     margin-top: 0;
 }
 
-.filter-group.group-flex.recolhido { flex: 0 0 auto; min-height: 0; }
+
 
 /* Seletor de mapa base — tira compacta de botões */
 .basemap-strip {
@@ -434,13 +441,18 @@ body, html {
 }
 
 /* Lista de organizações */
+/* Altura ajustável: a alça no canto inferior direito permite esticar */
 .org-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
     overflow-y: auto;
-    flex: 1;
     padding-right: 4px;
+
+    height: 240px;
+    min-height: 90px;
+    max-height: 72vh;
+    resize: vertical;
 }
 
 .org-list::-webkit-scrollbar { width: 6px; }

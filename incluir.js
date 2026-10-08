@@ -103,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
             verificarRepetida();
 
             if (d.endereco && !el('endereco').value.trim()) el('endereco').value = d.endereco;
+            aplicarSubprefeitura(d.candidatosSubprefeitura, d.bairro);
 
             if (d.foraDaRegiao) {
                 avisar('aviso', 'fa-triangle-exclamation',
@@ -120,8 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function buscarEnderecoDaPosicao(somenteSeVazio) {
         clearTimeout(state.reverseTimer);
+        marcarSubprefeitura('procurando');
+
         state.reverseTimer = setTimeout(async () => {
-            if (somenteSeVazio && el('endereco').value.trim()) return;
             const p = state.alfinete.getLatLng();
             try {
                 const resp = await fetch('/api/resolver', {
@@ -130,9 +132,75 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ acao: 'reverso', lat: p.lat, lon: p.lng })
                 });
                 const d = await resp.json();
-                if (d.ok && d.endereco && !el('endereco').value.trim()) el('endereco').value = d.endereco;
-            } catch { /* o campo pode ser preenchido à mão */ }
+                if (!d.ok) { marcarSubprefeitura('falhou'); return; }
+
+                if (d.endereco && !(somenteSeVazio && el('endereco').value.trim())) {
+                    if (!el('endereco').value.trim()) el('endereco').value = d.endereco;
+                }
+                aplicarSubprefeitura(d.candidatosSubprefeitura, d.bairro);
+
+            } catch {
+                marcarSubprefeitura('falhou');
+            }
         }, 700);
+    }
+
+    /* ======================================================================
+       2b. SUBPREFEITURA AUTOMÁTICA
+       O OpenStreetMap devolve nomes de distrito a partir da coordenada; aqui
+       eles são comparados com a lista oficial do config.js. Só entra no
+       cadastro o que casar com a lista — é o que impede erro de digitação e
+       classificação errada.
+       ====================================================================== */
+
+    function simplificar(txt) {
+        return String(txt || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]/gi, '')
+            .toLowerCase();
+    }
+
+    function aplicarSubprefeitura(candidatos, bairro) {
+        const oficiais = CONFIG.subprefeituras || [];
+        const lista = Array.isArray(candidatos) ? candidatos : [];
+
+        let encontrada = '';
+        for (const c of lista) {
+            const achou = oficiais.find((o) => simplificar(o) === simplificar(c));
+            if (achou) { encontrada = achou; break; }
+        }
+
+        el('subprefeitura').value = encontrada;
+
+        if (encontrada) {
+            marcarSubprefeitura('detectada', encontrada);
+        } else {
+            marcarSubprefeitura('falhou', '', bairro || (lista[0] || ''));
+        }
+    }
+
+    function marcarSubprefeitura(estado, nome, pista) {
+        const caixa = el('subprefCaixa');
+        const texto = el('subprefTexto');
+        const icone = caixa.querySelector('i');
+
+        caixa.classList.remove('detectada', 'falhou');
+
+        if (estado === 'procurando') {
+            icone.className = 'fa-solid fa-spinner fa-spin';
+            texto.textContent = 'Identificando a subprefeitura…';
+        } else if (estado === 'detectada') {
+            caixa.classList.add('detectada');
+            icone.className = 'fa-solid fa-circle-check';
+            texto.textContent = nome;
+        } else {
+            caixa.classList.add('falhou');
+            icone.className = 'fa-solid fa-circle-question';
+            texto.textContent = pista
+                ? `Não reconhecida (o mapa indicou "${pista}"). Será deixada em branco.`
+                : 'Não foi possível identificar. Será deixada em branco.';
+            el('subprefeitura').value = '';
+        }
     }
 
     /* ======================================================================
@@ -163,7 +231,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch { /* segue com o config.js */ }
 
         preencherSelect('categoria', [...nomes].sort((a, b) => a.localeCompare(b, 'pt-BR')));
-        preencherSelect('subprefeitura', [...subs].sort((a, b) => a.localeCompare(b, 'pt-BR')));
+        // Subprefeitura não tem select: é detectada pela posição do alfinete.
     }
 
     function preencherSelect(id, valores) {
@@ -317,8 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const cat = valorPorNome(reg, ['Categoria']);
             const sub = valorPorNome(reg, ['Subprefeitura']);
-            if (cat) preencherSelect('categoria', [cat]), (el('categoria').value = cat);
-            if (sub) preencherSelect('subprefeitura', [sub]), (el('subprefeitura').value = sub);
+            if (cat) { preencherSelect('categoria', [cat]); el('categoria').value = cat; }
+            if (sub) { el('subprefeitura').value = sub; marcarSubprefeitura('detectada', sub); }
 
             const lat = parseFloat(String(valorPorNome(reg, ['Latitude'])).replace(',', '.'));
             const lon = parseFloat(String(valorPorNome(reg, ['Longitude'])).replace(',', '.'));
@@ -362,6 +430,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         const quem = el('quem').value.trim();
+        if (quem.length < 2) {
+            mostrarResultado(false, 'Escreva seu nome antes de enviar — fica registrado quem informou.');
+            el('quem').focus();
+            el('quem').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
         if (!state.posicionado) {
             mostrarResultado(false, 'Marque o local no mapa: cole o link do Google Maps ou arraste o alfinete vermelho.');
             el('mapa').scrollIntoView({ behavior: 'smooth', block: 'center' });

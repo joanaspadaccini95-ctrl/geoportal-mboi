@@ -31,8 +31,13 @@ export default async function handler(req, res) {
             if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
                 return res.status(400).json({ ok: false, erro: 'Coordenadas inválidas.' });
             }
-            const endereco = await nominatimReverso(lat, lon);
-            return res.status(200).json({ ok: true, endereco });
+            const r = await nominatimReverso(lat, lon);
+            return res.status(200).json({
+                ok: true,
+                endereco: r.endereco,
+                candidatosSubprefeitura: r.candidatos,
+                bairro: r.bairro
+            });
         }
 
         /* ---------- Link / endereço / coordenadas → ponto ---------- */
@@ -50,16 +55,18 @@ export default async function handler(req, res) {
                 });
             }
 
-            // Texto legível para gravar na planilha
-            let endereco = '';
-            try { endereco = await nominatimReverso(r.lat, r.lon); } catch { /* opcional */ }
+            // Texto legível para gravar na planilha + subprefeitura
+            let reverso = { endereco: '', candidatos: [], bairro: '' };
+            try { reverso = await nominatimReverso(r.lat, r.lon); } catch { /* opcional */ }
 
             return res.status(200).json({
                 ok: true,
                 lat: r.lat,
                 lon: r.lon,
                 precisao: r.precisao,
-                endereco,
+                endereco: reverso.endereco,
+                candidatosSubprefeitura: reverso.candidatos,
+                bairro: reverso.bairro,
                 foraDaRegiao: !dentroDaRegiao(r.lat, r.lon)
             });
         }

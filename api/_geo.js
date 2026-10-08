@@ -140,7 +140,15 @@ export async function nominatim(params, exigirRegiao = true) {
     return null;
 }
 
-/** Coordenada → endereço em texto (usado quando a pessoa só arrasta o alfinete). */
+/**
+ * Coordenada → endereço em texto E subprefeitura.
+ *
+ * O OpenStreetMap mapeia as subprefeituras de São Paulo como distritos
+ * administrativos, e o campo city_district da resposta costuma trazer o nome
+ * ("M'Boi Mirim", "Campo Limpo"...). Devolvemos também os campos vizinhos,
+ * porque a nomenclatura varia; quem decide qual serve é o cliente, que
+ * compara com a lista oficial do config.js.
+ */
 export async function nominatimReverso(lat, lon) {
     const qs = new URLSearchParams({
         format: 'jsonv2', lat: String(lat), lon: String(lon),
@@ -149,16 +157,26 @@ export async function nominatimReverso(lat, lon) {
     const d = await enfileirar(() =>
         buscarJSON(`https://nominatim.openstreetmap.org/reverse?${qs.toString()}`)
     );
-    if (!d || !d.address) return '';
+    if (!d || !d.address) return { endereco: '', candidatos: [], bairro: '' };
 
     const a = d.address;
+
     const partes = [];
     if (a.road) partes.push(a.house_number ? `${a.road}, ${a.house_number}` : a.road);
     if (a.suburb || a.neighbourhood) partes.push(a.suburb || a.neighbourhood);
     partes.push(`${a.city || a.town || 'São Paulo'} - ${a.state_code || 'SP'}`);
     if (a.postcode) partes.push(a.postcode);
 
-    return partes.filter(Boolean).join(', ') || (d.display_name || '');
+    // Nomes possíveis de subprefeitura, do mais provável ao menos
+    const candidatos = [a.city_district, a.borough, a.municipality, a.suburb, a.neighbourhood]
+        .filter(Boolean)
+        .map((v) => String(v).replace(/^subprefeitura\s+(de\s+)?/i, '').trim());
+
+    return {
+        endereco: partes.filter(Boolean).join(', ') || (d.display_name || ''),
+        candidatos: [...new Set(candidatos)],
+        bairro: a.suburb || a.neighbourhood || ''
+    };
 }
 
 export async function viaCep(cep) {

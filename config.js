@@ -88,17 +88,9 @@ const CONFIG = {
     baseMaps: [
         {
             id: "hybrid",
-            name: "Satélite + nomes",
+            name: "Satélite",
             icon: "fa-satellite",
             url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
-            attribution: "&copy; Google",
-            maxZoom: 20
-        },
-        {
-            id: "satellite",
-            name: "Satélite",
-            icon: "fa-earth-americas",
-            url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
             attribution: "&copy; Google",
             maxZoom: 20
         },
