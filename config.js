@@ -87,12 +87,24 @@ const CONFIG = {
        ===================================================================== */
     baseMaps: [
         {
-            id: "hybrid",
+            id: "satellite",
             name: "Satélite",
             icon: "fa-satellite",
-            url: "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+            url: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
             attribution: "&copy; Google",
-            maxZoom: 20
+            maxZoom: 20,
+
+            /* Os nomes de ruas e os ícones de comércio vêm numa camada
+               transparente separada (lyrs=h), empilhada por cima do satélite.
+               Por serem duas camadas, dá para enfraquecer SÓ os rótulos:
+               a imagem de satélite continua em força total.
+
+               opacidade: 0 = sem rótulos · 1 = cheios · 0.5 = o padrão daqui.
+               Abaixe se ainda estiverem competindo com as organizações. */
+            rotulos: {
+                url: "https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}",
+                opacidade: 0.5
+            }
         },
         {
             id: "osm",
@@ -104,8 +116,11 @@ const CONFIG = {
         }
     ],
 
-    // Qual mapa base o formulário de inclusão usa (id de baseMaps)
-    mapaDoFormulario: "hybrid",
+    // Mapa usado no formulário de inclusão (id de baseMaps). Lá os rótulos
+    // aparecem em força total: quem está marcando o ponto precisa ler os
+    // nomes das ruas e reconhecer os estabelecimentos vizinhos.
+    mapaDoFormulario: "satellite",
+    opacidadeRotulosNoFormulario: 1,
 
     /* =====================================================================
        DETECÇÃO DE DUPLICATAS no formulário

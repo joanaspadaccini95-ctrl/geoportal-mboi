@@ -34,11 +34,28 @@ document.addEventListener('DOMContentLoaded', () => {
     function iniciarMapa() {
         state.map = L.map('mapa', { center: CONFIG.mapa.center, zoom: CONFIG.mapa.zoom });
 
-        // Satélite COM nomes de ruas: dá para reconhecer o telhado e conferir
-        // a rua e os estabelecimentos vizinhos ao mesmo tempo.
-        const base = CONFIG.baseMaps.find((b) => b.id === CONFIG.mapaDoFormulario)
-                  || CONFIG.baseMaps[0];
-        L.tileLayer(base.url, { attribution: base.attribution, maxZoom: base.maxZoom }).addTo(state.map);
+        // Satélite COM nomes de ruas em força total: quem está marcando o
+        // ponto precisa ler as ruas e reconhecer os estabelecimentos vizinhos.
+        // No mapa principal esses rótulos vão enfraquecidos, para não
+        // competirem com os ícones das organizações.
+        const bm = CONFIG.baseMaps.find((b) => b.id === CONFIG.mapaDoFormulario)
+                || CONFIG.baseMaps[0];
+
+        L.tileLayer(bm.url, {
+            attribution: bm.attribution,
+            maxZoom: bm.maxZoom,
+            zIndex: 1
+        }).addTo(state.map);
+
+        if (bm.rotulos) {
+            const op = CONFIG.opacidadeRotulosNoFormulario !== undefined
+                ? CONFIG.opacidadeRotulosNoFormulario : 1;
+            L.tileLayer(bm.rotulos.url, {
+                maxZoom: bm.rotulos.maxZoom || bm.maxZoom,
+                opacity: op,
+                zIndex: 2
+            }).addTo(state.map);
+        }
 
         const icone = L.divIcon({
             className: 'marcador-form',

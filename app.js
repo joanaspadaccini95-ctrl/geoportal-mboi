@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         selecionado: null,
         carregando: false,
-        tentouRecarregar: false
+        tentouRecarregar: false,
+        ajustarProximoBalao: false
     };
 
     const CHAVE_QUEM = 'mboi_quem';
@@ -75,16 +76,12 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = '';
 
         CONFIG.baseMaps.forEach((bm, idx) => {
-            const tileLayer = L.tileLayer(bm.url, {
-                attribution: bm.attribution,
-                maxZoom: bm.maxZoom,
-                crossOrigin: true
-            });
-            state.baseMapLayers[bm.id] = tileLayer;
+            const camada = montarMapaBase(bm);
+            state.baseMapLayers[bm.id] = camada;
 
             if (idx === 0) {
-                tileLayer.addTo(state.map);
-                state.activeBaseMapLayer = tileLayer;
+                camada.addTo(state.map);
+                state.activeBaseMapLayer = camada;
             }
 
             const btn = document.createElement('button');
@@ -98,6 +95,47 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         state.camadaPontos = L.layerGroup().addTo(state.map);
+
+        // Só ajusta o enquadramento quando o balão foi aberto pela busca ou
+        // pela lista. Clique direto no ponto não mexe no mapa.
+        state.map.on('popupopen', (e) => {
+            if (!state.ajustarProximoBalao) return;
+            state.ajustarProximoBalao = false;
+            ajustarCentroParaBalao(e.popup);
+        });
+    }
+
+    /**
+     * Monta um mapa base. Quando ele define "rotulos", a imagem de satélite e
+     * os nomes de ruas vêm em DUAS camadas empilhadas — e é só por isso que
+     * dá para enfraquecer os rótulos sem apagar o satélite.
+     *
+     * O segundo argumento força uma opacidade (o formulário de inclusão usa 1).
+     */
+    function montarMapaBase(bm, opacidadeRotulos) {
+        const base = L.tileLayer(bm.url, {
+            attribution: bm.attribution,
+            maxZoom: bm.maxZoom,
+            crossOrigin: true
+        });
+
+        if (!bm.rotulos) return base;
+
+        const opacidade = opacidadeRotulos !== undefined
+            ? opacidadeRotulos
+            : (bm.rotulos.opacidade !== undefined ? bm.rotulos.opacidade : 0.5);
+
+        if (opacidade <= 0) return base;
+
+        const rotulos = L.tileLayer(bm.rotulos.url, {
+            maxZoom: bm.rotulos.maxZoom || bm.maxZoom,
+            opacity: opacidade,
+            crossOrigin: true,
+            zIndex: 2
+        });
+        base.options.zIndex = 1;
+
+        return L.layerGroup([base, rotulos]);
     }
 
     function switchBaseMap(id) {
@@ -351,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Balão SOMENTE no clique
             marcador.bindPopup(() => montarPopup(f.properties), {
                 maxWidth: 340,
-                autoPanPadding: [40, 40],
+                autoPanPadding: [40, 70],
                 closeButton: true
             });
 
@@ -680,35 +718,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (abrirPopup) {
+            // O balão só pode abrir DEPOIS que a animação termina: qualquer
+            // ajuste de enquadramento feito durante o voo é descartado pelo
+            // Leaflet, e o balão acabava cortado no alto da tela.
+            state.ajustarProximoBalao = true;
+
+            // Rede de segurança: se o mapa já estiver no destino, o moveend
+            // pode não disparar e o balão nunca abriria.
+            let aberto = false;
+            const abrir = () => {
+                if (aberto) return;
+                aberto = true;
+                marcador.openPopup();   // o ajuste vem no evento 'popupopen'
+            };
+
+            state.map.once('moveend', abrir);
+            setTimeout(abrir, 900);
+
             state.map.flyTo(marcador.getLatLng(), Math.max(state.map.getZoom(), 17), { duration: 0.7 });
-            setTimeout(() => {
-                marcador.openPopup();
-                centralizarBalao();
-            }, 320);
         }
     }
 
     /**
-     * O balão abre ACIMA do ponto. Se o mapa centraliza no ponto, metade do
-     * balão fica fora da tela. Aqui o mapa desloca para baixo metade da altura
-     * do balão, deixando o conjunto balão+ponto centralizado.
+     * O balão abre ACIMA do ponto e o painel de filtros cobre a direita da
+     * tela. Aqui o centro do mapa é recalculado em pixels para que o conjunto
+     * ponto + balão fique no meio da área realmente visível.
      */
-    function centralizarBalao() {
-        setTimeout(() => {
-            const popup = state.map._popup;
-            if (!popup) return;
+    function ajustarCentroParaBalao(popup) {
+        // Dois quadros de espera: o balão precisa estar medido no DOM
+        requestAnimationFrame(() => requestAnimationFrame(() => {
             const el = popup.getElement();
             if (!el) return;
 
             const altura = el.offsetHeight;
             if (!altura) return;
 
-            // Metade da altura do balão, limitada para não exagerar em telas baixas
-            const limite = Math.round(state.map.getSize().y * 0.32);
-            const deslocamento = Math.min(Math.round(altura / 2), limite);
+            const zoom = state.map.getZoom();
+            const tela = state.map.getSize();
 
-            state.map.panBy([0, -deslocamento], { animate: true, duration: 0.35 });
-        }, 120);
+            // Sobe o centro metade da altura do balão (o ponto desce na tela)
+            const limiteY = Math.round(tela.y * 0.34);
+            const deslocY = Math.min(Math.round(altura / 2), limiteY);
+
+            // Desvia do painel lateral, quando ele está aberto
+            const sidebar = document.getElementById('sidebar');
+            let deslocX = 0;
+            if (sidebar && !sidebar.classList.contains('collapsed') && tela.x > 760) {
+                deslocX = Math.round((sidebar.offsetWidth + 32) / 2);
+            }
+
+            const ponto = state.map.project(popup.getLatLng(), zoom);
+            ponto.y -= deslocY;
+            ponto.x += deslocX;
+
+            state.map.panTo(state.map.unproject(ponto, zoom), {
+                animate: true,
+                duration: 0.4
+            });
+        }));
     }
 
     function limparDestaque() {

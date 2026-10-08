@@ -175,6 +175,24 @@ Isso não é enfeite. O cadastro em duplicata vinha de a pessoa gravar, não ver
 
 ---
 
+## 4g. Rótulos do satélite
+
+Os ícones de comércio e os nomes de ruas do Google competiam visualmente com os marcadores das organizações. O Google serve esses rótulos como uma **camada transparente separada** (`lyrs=h`), então o mapa é montado em duas camadas empilhadas: satélite embaixo em força total, rótulos em cima enfraquecidos.
+
+Para ajustar, em `config.js` → `baseMaps` → entrada `satellite` → `rotulos.opacidade`:
+
+| Valor | Resultado |
+|---|---|
+| `0` | sem rótulos — só a imagem de satélite |
+| `0.3` | nomes bem discretos |
+| `0.5` | o padrão daqui |
+| `1` | rótulos cheios, como o modo híbrido comum |
+
+O mapa do **formulário de inclusão** ignora esse valor e usa rótulos em força total (`opacidadeRotulosNoFormulario`), porque lá a pessoa precisa ler as ruas e reconhecer os vizinhos para posicionar o alfinete.
+
+
+---
+
 ## 5. Rodar localmente
 
 ```bash
